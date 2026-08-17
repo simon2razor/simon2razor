@@ -1288,6 +1288,7 @@ function generatePlanFromForm() {
 
   renderStrengthExercises();
   bindWorkoutDetailToggles();
+  bindCompleteButtons();
   renderProgressChart();
 }
 
