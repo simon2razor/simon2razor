@@ -559,6 +559,42 @@ function getPhaseScale(phase) {
   }
 }
 
+const phaseExplanations = {
+  Base: {
+    swim: 'In der Grundlagenphase baust du eine solide aerobe Basis auf. Das Tempo ist locker, der Fokus liegt auf Technik und Ausdauer.',
+    bike: 'Die Grundlage für deine Radleistung wird gelegt. Lockere,长距离Fahrten stoffwechsel- und gefäßsystem.',
+    run: 'Du gewöhnst deinen Körper an die Belastung. Lockere Läufe im GA1 stoffwechsel- und gefäßsystem.',
+    strength: 'Kraft und Stabilität werden aufgebaut, um Verletzungen vorzubeugen und die Bewegungsqualität zu verbessern.',
+    default: 'Du baust jetzt eine solide Basis auf – ausdauer, Technik und Regeneration stehen im Vordergrund.',
+  },
+  Build: {
+    swim: 'Die Intensität steigt. Du arbeitest an deinem Schwimm-Pacing und baust Schwelle und Kraft im Wasser auf.',
+    bike: 'Sweet-Spot- und Threshold-Einheiten bringen deine Radleistung auf Wettkampfniveau.',
+    run: 'Tempo- und Schwelleinheiten verbessern dein Lauftempo und deine aerobe Kapazität.',
+    strength: 'Die Kraft wird sportartspezifisch weiterentwickelt – Explosivkraft und Belastbarkeit stehen im Vordergrund.',
+    default: 'Die Intensität steigt. Du bringst deine Leistung auf Wettkampfniveau.',
+  },
+  Peak: {
+    swim: 'Du simulierst Wettkampfbedingungen. Pacing, Tempo-Wechsel und mentale Härte werden trainiert.',
+    bike: 'Rennnahe Einheiten mit hoher Intensität, aber reduziertem Volumen. Du polierst deine Form.',
+    run: 'Rennahe Tempoeinheiten. Du fühlst dich scharf und bereit, das Volumen sinkt leicht.',
+    strength: 'Leichtes, knackiges Krafttraining hält die Form, ohne Ermüdung aufzubauen.',
+    default: 'Du bist in Topform. Das Volumen sinkt leicht, die Intensität bleibt hoch.',
+  },
+  Taper: {
+    swim: 'Lockere Schwimmeinheiten mit kurzen Impulsen. Du erholst dich und kommst frisch an den Start.',
+    bike: 'Kurze, lockere Einheiten mit wenigen kurzen Schubbe. Die Beine sollen frisch bleiben.',
+    run: 'Leichte Läufe mit kurzen Tempogalops. Der Körper erholt sich und speichert Energie.',
+    strength: 'Nur noch leichte Mobilitäts- und Stabilitätsarbeit. Kein Kraftverlust, volle Erholung.',
+    default: 'Du erholst dich und sparst Energie für den Wettkampf. Kurze, lockere Impulse reichen.',
+  },
+};
+
+function getPhaseExplanation(phase, type) {
+  if (!phase || !phaseExplanations[phase]) return '';
+  return phaseExplanations[phase][type] || phaseExplanations[phase].default;
+}
+
 function synthesizeWeeklySessions(config, phaseScale, experience, focus) {
   const pattern = getWeeklyExercisePattern();
   const sessionsCount = Math.max(1, Math.round((config ? config.sessions : 5) * ((phaseScale + 1) / 2)));
@@ -771,6 +807,26 @@ function renderAnnualOverview() {
   const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
   const weekDayHeaders = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 
+  const formData = new FormData(plannerForm);
+  const eventDateVal = formData.get('eventDate');
+  let eventDateObj = null;
+  if (eventDateVal) {
+    const parts = eventDateVal.split('-');
+    eventDateObj = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  }
+
+  const getPhaseClassForDate = (dateKey) => {
+    if (!eventDateObj) return '';
+    const parts = dateKey.split('-');
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    const diffMs = eventDateObj - d;
+    const weeksUntil = Math.ceil(diffMs / (7 * 86400000));
+    if (weeksUntil < 0) return '';
+    const phase = getTrainingPhase(weeksUntil);
+    if (!phase) return '';
+    return `phase-${phase.toLowerCase()}`;
+  };
+
   const renderMonth = (monthIndex) => {
     const daysInMonth = new Date(refYear, monthIndex + 1, 0).getDate();
     const firstWeekday = (new Date(refYear, monthIndex, 1).getDay() + 6) % 7; // Montag zuerst
@@ -788,6 +844,7 @@ function renderAnnualOverview() {
         hasTime ? 'has-time' : '',
         dateKey === todayKey ? 'today' : '',
         dateKey === selectedDate ? 'selected' : '',
+        getPhaseClassForDate(dateKey),
       ].filter(Boolean).join(' ');
       cells.push(`<button type="button" class="day-cell ${classes}" data-date="${dateKey}" aria-label="Tag ${dateKey}">${day}</button>`);
     }
@@ -1033,7 +1090,7 @@ function loadDemoPlan() {
   persistAvailability();
 }
 
-function buildWeeklyPlan(availableDays, availability, blockedMap, experience, focus, config) {
+function buildWeeklyPlan(availableDays, availability, blockedMap, experience, focus, config, performanceData) {
   const pattern = getWeeklyExercisePattern();
   const schedule = [];
 
@@ -1058,7 +1115,7 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
         const sessionMinutes = Math.min(baseDuration, segment.end - cursor);
         const startTime = minutesToTime(cursor);
         const endTime = minutesToTime(cursor + sessionMinutes);
-        schedule.push(buildSession(type, day, sessionMinutes, startTime, endTime, experience, focus, config));
+        schedule.push(buildSession(type, day, sessionMinutes, startTime, endTime, experience, focus, config, performanceData));
         cursor += sessionMinutes;
         sessionCounter += 1;
       }
@@ -1082,6 +1139,14 @@ function generatePlanFromForm() {
   const availableDays = weekdays.filter((day) => availability[day].minutes > 0);
   const config = goalConfigs[goal];
 
+  const performanceData = {
+    swimTime: (formData.get('swimTime') || '').toString().trim(),
+    ftpWatts: parseInt(formData.get('ftpWatts') || '0', 10) || null,
+    fiveKTime: (formData.get('fiveKTime') || '').toString().trim(),
+    maxHR: parseInt(formData.get('maxHR') || '0', 10) || null,
+    restHR: parseInt(formData.get('restHR') || '0', 10) || null,
+  };
+
   // update charts
   try {
     renderDisciplinePie((config && config.emphasis) || { swim: 0.3, bike: 0.4, run: 0.2, strength: 0.1 });
@@ -1100,7 +1165,7 @@ function generatePlanFromForm() {
     return;
   }
 
-  const allWeekSessions = buildWeeklyPlan(availableDays, availability, blocked, experience, focus, config);
+  const allWeekSessions = buildWeeklyPlan(availableDays, availability, blocked, experience, focus, config, performanceData);
 
   // If an event date is set, compute weeks until event and scale sessions
   let weeksUntil = null;
@@ -1135,7 +1200,8 @@ function generatePlanFromForm() {
     const scale = getPhaseScale(phase);
     plannedSessions = plannedSessions.map((session) => {
       const scaled = Math.max(20, Math.round(session.minutes * scale));
-      return { ...session, minutes: scaled, duration: `${scaled} min`, description: `${session.description} (${phase})` };
+      const explanation = getPhaseExplanation(phase, session.type);
+      return { ...session, minutes: scaled, duration: `${scaled} min`, phase, phaseExplanation: explanation };
     });
   }
   const sessions = plannedSessions.slice(0, Math.min(config.sessions + 2, plannedSessions.length));
@@ -1166,13 +1232,15 @@ function generatePlanFromForm() {
 
   planTitle.textContent = eventName ? `${name}s Vorbereitung: ${eventName}` : `${name}s ${config.label}-Plan`;
   if (eventDate) {
-    eventSummary.textContent = `${eventName || eventType} in ${weeksUntil} Wochen • Phase: ${phase}`;
+    const phaseExplainer = phase ? ` — ${getPhaseExplanation(phase, 'default')}` : '';
+    eventSummary.textContent = `${eventName || eventType} in ${weeksUntil} Wochen · Phase: ${phase}${phaseExplainer}`;
   } else {
     eventSummary.textContent = 'Kein Ziel gesetzt';
   }
   weeklyVolume.textContent = `${totalHours.toFixed(totalHours >= 10 ? 0 : 1).replace('.0', '')} h`;
   workoutCount.textContent = String(sessions.length);
   focusMatch.textContent = selectedFocus;
+  renderDisciplineBreakdown(sessions);
 
   weekPlanList.innerHTML = (() => {
     const sorted = sessions.sort((a, b) => weekdays.indexOf(a.day) - weekdays.indexOf(b.day));
@@ -1181,27 +1249,46 @@ function generatePlanFromForm() {
     return Object.keys(grouped).map((day) => `
       <div class="day-group">
         <h4 class="day-group-header">${labels[day] || day}</h4>
-        ${grouped[day].map((session) => `
+        ${grouped[day].map((session, si) => {
+          const uid = `session-${session.day}-${si}`;
+          const hasDetail = session.workoutDetail && session.workoutDetail.main;
+          const zonesHtml = (session.workoutDetail && session.workoutDetail.zones && session.workoutDetail.zones.length)
+            ? `<div class="zone-references">${session.workoutDetail.zones.map((z) => `<div class="zone-ref">${z}</div>`).join('')}</div>` : '';
+          const detailHtml = hasDetail ? `
+            <div class="session-workout-detail" role="button" tabindex="0" aria-expanded="false" data-uid="${uid}">
+              <div class="session-workout-body">
+                ${session.workoutDetail.main.map((step) => `<div class="workout-step"><strong>${step.label}:</strong> ${step.text}</div>`).join('')}
+                ${zonesHtml}
+              </div>
+              <span class="workout-detail-toggle"><span class="workout-detail-label">Workout Details</span><span class="ex-howto-chevron"></span></span>
+            </div>` : '';
+          return `
           <article class="day-plan-card ${session.type}">
             <header>
               <div class="card-title-row">
                 <span class="disc-icon ${session.type}">${disciplineIcons[session.type] || ''}</span>
-                <h4>${session.timeWindow}</h4>
+                <div>
+                  <h4>${session.timeWindow}</h4>
+                  <span class="session-summary">${session.summary || session.description}</span>
+                </div>
               </div>
-              <span class="pill ${session.type}">${session.type}</span>
+              <span class="pill ${session.type}">${session.label} · ${session.duration}</span>
             </header>
             <div class="session-meta">
-              <span>${session.duration}</span>
               <span>${session.intensity}</span>
             </div>
-            <p class="session-description">${session.description}</p>
-          </article>
-        `).join('')}
+            ${session.phaseExplanation ? `<p class="phase-explanation">${session.phaseExplanation}</p>` : ''}
+            ${detailHtml}
+            <button type="button" class="complete-btn ${session.completed ? 'done' : ''}" data-session-id="${session.id || ''}" aria-label="Als erledigt markieren">${session.completed ? '✓ Erledigt' : '○ Erledigen'}</button>
+          </article>`;
+        }).join('')}
       </div>
     `).join('');
   })();
 
   renderStrengthExercises();
+  bindWorkoutDetailToggles();
+  renderProgressChart();
 }
 
 function renderStrengthExercises() {
@@ -1289,50 +1376,575 @@ function handleCollapsibleToggle(event) {
   if (label) label.textContent = isOpen ? 'Ausblenden' : 'Anzeigen';
 }
 
-function buildSession(type, day, sessionMinutes, startTime, endTime, experience, focus, config) {
-  const duration = `${sessionMinutes} min`;
-  const blocks = {
-    swim: {
-      beginner: 'Technikblock mit Drill-Sets, kurzen leichten Intervallen und ruhiger Abkühlung.',
-      intermediate: 'Aerober Schwimmblock mit Rhythmusdrills, Tempo-Intervallen und sauberer Technik.',
-      advanced: 'Pacing- und Zugarbeit mit Fokus auf Technik, Kraft und effiziente Ausdauer.',
-    },
-    bike: {
-      beginner: 'Stetiger Radblock mit Kadenzarbeit und kurzer Stabilitätsphase für die Beine.',
-      intermediate: 'Tempo-Fahrt mit kontrolliertem Aufwand, Anstiegen und sauberem Pacing.',
-      advanced: 'Power-Fokus mit konstantem aeroben Einsatz und reaktionsschneller Cadenz.',
-    },
-    run: {
-      beginner: 'Leichter Lauf mit kurzer Cadenz- oder Hügelphase und Mobilitätsarbeit.',
-      intermediate: 'Progressiver Lauf mit Tempo und kontrollierter Schrittdauer.',
-      advanced: 'Threshold- oder Rennpacing mit sauberem Laufstil und hoher Effizienz.',
-    },
-    strength: {
-      beginner: 'Mobilität und Stabilität im unteren Körper für bessere Lauf- und Radtechnik.',
-      intermediate: 'Triathlon-Kraftprogramm für Hüfte, Gesäß, Rücken und Rumpf.',
-      advanced: 'Einbeiniges Kraft- und Explosionsprogramm für Laufökonomie und Gelenksstabilität.',
-    },
-  };
+// Workout detail toggle (expand/collapse workout steps)
+function handleWorkoutDetailToggle(event) {
+  const box = event.target.closest('.session-workout-detail');
+  if (!box) return;
+  if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+  if (event.type === 'keydown') event.preventDefault();
+  const isOpen = box.classList.toggle('open');
+  box.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  const label = box.querySelector('.workout-detail-label');
+  if (label) label.textContent = isOpen ? 'Workout verbergen' : 'Workout Details';
+}
 
-  const focusNote =
-    focus === 'recovery'
-      ? 'Der Fokus liegt auf Mobilität und aktiver Erholung.'
-      : focus === 'technique'
-        ? 'Mehr Wert auf technische Präzision und effiziente Bewegung.'
-        : focus === 'performance'
-          ? 'Der Fokus liegt auf Kraft, Tempo und Rennpacing.'
-          : 'Diese Einheit baut Ausdauer und nachhaltige Leistung auf.';
+// Bind workout detail toggles (delegated on weekPlanList)
+function bindWorkoutDetailToggles() {
+  const el = document.getElementById('weekPlanList');
+  if (!el || el.dataset.detailBound) return;
+  el.dataset.detailBound = '1';
+  el.addEventListener('click', handleWorkoutDetailToggle);
+  el.addEventListener('keydown', handleWorkoutDetailToggle);
+}
+
+function buildSession(type, day, sessionMinutes, startTime, endTime, experience, focus, config, performanceData) {
+  const duration = `${sessionMinutes} min`;
+  const labelMap = { swim: 'Schwimmen', bike: 'Rad', run: 'Laufen', strength: 'Kraft' };
+
+  const detail = generateWorkoutDetail(type, experience, focus, sessionMinutes, performanceData);
 
   return {
+    id: `${type}-${day}-${startTime.replace(':', '')}`,
     type,
     day,
     duration,
     minutes: sessionMinutes,
-    label: type === 'swim' ? 'Schwimmen' : type === 'bike' ? 'Rad' : type === 'run' ? 'Laufen' : 'Kraft',
+    label: labelMap[type] || type,
     timeWindow: `${startTime}–${endTime}`,
-    intensity: config.intensity,
-    description: `${type === 'swim' ? 'Schwimmen' : type === 'bike' ? 'Radfahren' : type === 'run' ? 'Laufen' : 'Kraft'}: ${blocks[type][experience]} ${focusNote}`,
+    intensity: detail.zoneLabel,
+    summary: detail.summary,
+    description: detail.summary,
+    workoutDetail: detail,
   };
+}
+
+function generateWorkoutDetail(type, experience, focus, minutes, performanceData) {
+  const pd = performanceData || {};
+  const ratio = Math.max(0.1, minutes / 60);
+  const warmupMin = Math.round(Math.min(10, Math.max(5, minutes * 0.12)));
+  const cooldownMin = Math.round(Math.min(10, Math.max(5, minutes * 0.1)));
+  const mainMin = Math.max(10, minutes - warmupMin - cooldownMin);
+
+  const templates = {
+    swim: {
+      beginner: {
+        endurance: {
+          summary: `Technik-Schwimmen: Drills und gleichmäßige Züge`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min locker schwimmen, lockerer Beinschlag` },
+            { label: 'Drills', text: `${Math.round(mainMin * 0.3)} min Catch-Up Drill (25 m Sport, 25 m normal), Fokus auf lange Züge` },
+            { label: 'Hauptteil', text: `${Math.round(mainMin * 0.5)} min gleichmäßig im lockeren Tempo, 100 m-Sets, ca. 2:00–2:20 / 100 m` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker Rückenschwimmen und Beinschlag` },
+          ],
+          zone: 'GA1', zoneLabel: 'Locker',
+        },
+        performance: {
+          summary: `Tempo-Einheit: 4 × 100 m mit kontrolliertem Tempo`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Schwimmen mit Fokus auf Wasserlage` },
+            { label: 'Hauptteil', text: `4 × 100 m im moderaten Tempo (ca. 1:55–2:10 / 100 m), 30 s Pause dazwischen` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker schwimmen, Technik-Drills` },
+          ],
+          zone: 'GA2', zoneLabel: 'Moderat',
+        },
+        technique: {
+          summary: `Technik-Fokus: Ellbogenhöhe und Catch-Verbesserung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Schwimmen` },
+            { label: 'Drills', text: `4 × 25 m Fist Drill + 4 × 25 m Fingertip Drag, Fokus auf hohen Ellbogen` },
+            { label: 'Hauptteil', text: `${Math.round(mainMin * 0.5)} min Sculling-Übungen, langsamer Tempo mit viel Druck` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker schwimmen` },
+          ],
+          zone: 'Technik', zoneLabel: 'Technik',
+        },
+        recovery: {
+          summary: `Lockeres Schwimmen: Regeneration und Mobilität`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min sehr lockeres Schwimmen` },
+            { label: 'Hauptteil', text: `${mainMin} min locker im GA1, 100 m-Sets ohne Pause-Zwang, entspannt` },
+            { label: 'Cool-down', text: `${cooldownMin} min Rückenschwimmen und Strecken` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+      intermediate: {
+        endurance: {
+          summary: `Ausdauer-Schwimmen: 6 × 100 m mit gleichmäßigem Tempo`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min: 200 m locker + 4 × 50 m Drills (Catch-Up, Fingertip Drag)` },
+            { label: 'Hauptteil', text: `6 × 100 m im GA2-Tempo (ca. 1:45–2:00 / 100 m), 20 s Pause. Letzter Satz 5 s schneller.` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker schwimmen + Beinschlag` },
+          ],
+          zone: 'GA2', zoneLabel: 'Ausdauer',
+        },
+        performance: {
+          summary: `Tempo-Intervalle: 4 × 200 m @ Wettkampftempo`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min: 300 m locker + 4 × 25 m Progression` },
+            { label: 'Hauptteil', text: `4 × 200 m im Wettkampftempo (ca. 1:40–1:55 / 100 m), 30 s Pause. Ziel: gleichmäßig von Satz 1 bis 4.` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker + Technik-Drills` },
+          ],
+          zone: 'WS', zoneLabel: 'Schwelle',
+        },
+        technique: {
+          summary: `Technik-Intervalle: Catch und Rotation verfeinern`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Schwimmen` },
+            { label: 'Drills', text: `4 × 50 m 6-Kick Switch (Seitenlage, 6 Kicks pro Seite)` },
+            { label: 'Hauptteil', text: `4 × 100 m mit Fokus auf hohen Ellbogen und sauberen Catch, moderates Tempo` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker schwimmen` },
+          ],
+          zone: 'Technik', zoneLabel: 'Technik',
+        },
+        recovery: {
+          summary: `Lockeres Schwimmen: aktive Erholung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min sehr lockeres Schwimmen` },
+            { label: 'Hauptteil', text: `${mainMin} min locker im GA1, 100 m-Sets, entspannt und rhythmisch` },
+            { label: 'Cool-down', text: `${cooldownMin} min Rückenschwimmen + Strecken` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+      advanced: {
+        endurance: {
+          summary: `Lange Ausdauer: 8 × 100 m @ gleichmäßigem Pace`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min: 400 m locker + 4 × 50 m Progression` },
+            { label: 'Hauptteil', text: `8 × 100 m im GA2-Tempo (ca. 1:35–1:50 / 100 m), 15 s Pause. Gleichmäßigkeit über alles.` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker + Beinschlag` },
+          ],
+          zone: 'GA2', zoneLabel: 'Ausdauer',
+        },
+        performance: {
+          summary: `Threshold-Schwimmen: 5 × 200 m @ Schwelle`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min: 400 m locker + 4 × 50 m Staffel` },
+            { label: 'Hauptteil', text: `5 × 200 m an der Schwelle (ca. 1:30–1:45 / 100 m), 25 s Pause. Letzter Satz: versuchen, 2–3 s schneller.` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker + Technik` },
+          ],
+          zone: 'SCHW', zoneLabel: 'Schwelle',
+        },
+        technique: {
+          summary: `Kraft-Schwimmen: Paddles + Power-Drills`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Schwimmen` },
+            { label: 'Kraft', text: `4 × 100 m mit Paddles im moderaten Tempo, Fokus auf langen Zug` },
+            { label: 'Speed', text: `6 × 50 m Sprint (ca. 70–80 %), 45 s Pause, hoher Ellbogen` },
+            { label: 'Cool-down', text: `${cooldownMin} min locker schwimmen` },
+          ],
+          zone: 'Kraft', zoneLabel: 'Kraft',
+        },
+        recovery: {
+          summary: `Lockeres Schwimmen: Regeneration`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min sehr lockeres Schwimmen` },
+            { label: 'Hauptteil', text: `${mainMin} min locker im GA1, rhythmisch und entspannt` },
+            { label: 'Cool-down', text: `${cooldownMin} min Rückenschwimmen + Strecken` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+    },
+    bike: {
+      beginner: {
+        endurance: {
+          summary: `Grundlage:锁ere Fahrt mit Kadenzarbeit`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min leichtes Treten, 90–100 U/min Kadenz` },
+            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1, gleichmäßig, Kadenz 85–95 U/min` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Locker',
+        },
+        performance: {
+          summary: `Tempo-Einheit: 3 × 8 min @ moderatem Tempo`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min leichtes Treten` },
+            { label: 'Hauptteil', text: `3 × 8 min im moderaten Tempo (RPE 5–6), 3 min locker dazwischen` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'GA2', zoneLabel: 'Moderat',
+        },
+        technique: {
+          summary: `Kadenz-Drills: Tritt aufbessern`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten` },
+            { label: 'Drills', text: `3 × 3 min bei 100–110 U/min (leichter Gang), 2 min locker` },
+            { label: 'Hauptteil', text: `${Math.round(mainMin * 0.4)} min lockere Fahrt mit bewusst runden Tritt` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'Technik', zoneLabel: 'Technik',
+        },
+        recovery: {
+          summary: `Lockere Runde: Regeneration`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min sehr lockeres Treten` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1, kein Druck` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+      intermediate: {
+        endurance: {
+          summary: `Grundlage:锁ere Fahrt mit Kadenz-Zielen`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten, 90–100 U/min` },
+            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1, Kadenz 88–95 U/min, gleichmäßig` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Locker',
+        },
+        performance: {
+          summary: `Sweet-Spot: 3 × 10 min @ 88–94 % FTP`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten + 2 × 1 min leicht progressive Kadenz` },
+            { label: 'Hauptteil', text: `3 × 10 min im Sweet-Spot (88–94 % FTP, RPE 7), 5 min locker dazwischen` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'SS', zoneLabel: 'Sweet Spot',
+        },
+        technique: {
+          summary: `Kadenz-Training: Einbein-Drills und schnelle Umdrehungen`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten` },
+            { label: 'Drills', text: `4 × 1 min Einbein-Pedalieren (pro Seite), 1 min locker` },
+            { label: 'Hauptteil', text: `3 × 3 min bei 100–110 U/min im leichten Gang, Fokus auf runden Tritt` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'Technik', zoneLabel: 'Technik',
+        },
+        recovery: {
+          summary: `Lockere Runde: aktive Erholung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min sehr lockeres Treten` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1, kein Druck` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+      advanced: {
+        endurance: {
+          summary: `Lange锁ere Fahrt: aerobe Grundlage`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten` },
+            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1 (60–75 % FTP), Kadenz 88–95 U/min` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Locker',
+        },
+        performance: {
+          summary: `Threshold-Intervalle: 2 × 20 min @ FTP`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten + 3 × 1 min progressives Anfahren` },
+            { label: 'Hauptteil', text: `2 × 20 min bei FTP (RPE 8), 8 min locker dazwischen. Konstantes Tempo, kein Drücken.` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'SCHW', zoneLabel: 'Schwelle',
+        },
+        technique: {
+          summary: `Kadenz & Power: hohe Frequenz + kurze Sprint-Phasen`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten` },
+            { label: 'Drills', text: `4 × 1 min Einbein-Drills (pro Seite), hohe Kadenz` },
+            { label: 'Hauptteil', text: `6 × 30 s Sprint @ 110+ U/min, 2:30 min locker, Fokus auf Explosivität` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'VO2', zoneLabel: 'VO₂max',
+        },
+        recovery: {
+          summary: `Lockere Runde: Erholung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min sehr lockeres Treten` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+    },
+    run: {
+      beginner: {
+        endurance: {
+          summary: `Lockere锁ere Laufeinheit mit Lauf-ABC`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min flottes Gehen + 2 × 30 s Ankippen` },
+            { label: 'Lauf-ABC', text: `3 × 30 m A-Skips, Kniehebung, kurze Schritte` },
+            { label: 'Hauptteil', text: `${mainMin} min lockeres Laufen im GA1, Ganzsatz-Dialog möglich` },
+            { label: 'Cool-down', text: `${cooldownMin} min Gehen + Dehnung` },
+          ],
+          zone: 'GA1', zoneLabel: 'Locker',
+        },
+        performance: {
+          summary: `Progressiver Lauf: stufenweise Tempo steigern`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen` },
+            { label: 'Hauptteil', text: `${mainMin} min: 3 Stufen à ${Math.round(mainMin / 3)} min, jeweils etwas schneller (GA2 → GA2+ → GA3)` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'GA2', zoneLabel: 'Moderat',
+        },
+        technique: {
+          summary: `Technik-Lauf: Cadence und Schrittfrequenz`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen` },
+            { label: 'Drills', text: `4 × 30 m Fast Feet (schnelle, kurze Schritte, >160 SPM)` },
+            { label: 'Hauptteil', text: `${Math.round(mainMin * 0.6)} min lockeres Laufen mit bewusst hoher Kadenz` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'Technik', zoneLabel: 'Technik',
+        },
+        recovery: {
+          summary: `Lockeres Laufen: Regeneration`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Gehen` },
+            { label: 'Hauptteil', text: `${mainMin} min sehr lockeres Laufen im GA1` },
+            { label: 'Cool-down', text: `${cooldownMin} min Gehen + Dehnung` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+      intermediate: {
+        endurance: {
+          summary: `Grundlage:锁ere Fahrt im GA1`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen + 2 × 20 m Ankippen` },
+            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1 (65–75 % HFmax), gleichmäßig` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Locker',
+        },
+        performance: {
+          summary: `Tempo-Intervalle: 4 × 5 min @ Schwellentempo`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen + 2 × 20 m Ankippen` },
+            { label: 'Hauptteil', text: `4 × 5 min im Schwellentempo (RPE 7, ca. Halbmarathon-Pace), 2:30 min locker dazwischen` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'SCHW', zoneLabel: 'Schwelle',
+        },
+        technique: {
+          summary: `Fartlek: Tempowechsel nach Gefühl`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen` },
+            { label: 'Hauptteil', text: `${mainMin} min Fartlek: 1 min zügig / 1 min locker, nach Gefühl, 8–10 Wiederholungen` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'GA2', zoneLabel: 'Variabel',
+        },
+        recovery: {
+          summary: `Lockeres Laufen: aktive Erholung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Gehen` },
+            { label: 'Hauptteil', text: `${mainMin} min sehr lockeres Laufen im GA1` },
+            { label: 'Cool-down', text: `${cooldownMin} min Gehen + Dehnung` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+      advanced: {
+        endurance: {
+          summary: `Lange锁ere Fahrt: aerobe Grundlage`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen` },
+            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1 (65–75 % HFmax), gleichmäßig und entspannt` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'GA1', zoneLabel: 'Locker',
+        },
+        performance: {
+          summary: `Threshold-Lauf: 3 × 10 min @ Schwellentempo`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen + 3 × 20 m Ankippen` },
+            { label: 'Hauptteil', text: `3 × 10 min im Schwellentempo (RPE 8, ca. 10K-Pace), 3 min locker dazwischen` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'SCHW', zoneLabel: 'Schwelle',
+        },
+        technique: {
+          summary: `Hill Repeats + Cadence: Kraft und Frequenz`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen` },
+            { label: 'Hügel', text: `6 × 45 s Bergsprints (5–8 % Steigung), Jogg den Hügel runter` },
+            { label: 'Cadence', text: `4 × 20 s Fast Feet auf flachem Stück (>170 SPM)` },
+            { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
+          ],
+          zone: 'VO2', zoneLabel: 'VO₂max',
+        },
+        recovery: {
+          summary: `Lockeres Laufen: Erholung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Gehen` },
+            { label: 'Hauptteil', text: `${mainMin} min sehr lockeres Laufen im GA1` },
+            { label: 'Cool-down', text: `${cooldownMin} min Gehen + Dehnung` },
+          ],
+          zone: 'GA1', zoneLabel: 'Regeneration',
+        },
+      },
+    },
+    strength: {
+      beginner: {
+        endurance: {
+          summary: `Mobilität & Grundkraft: Ganzkörper-Grundprogramm`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität: Hüftöffner, Thoracic Rotations, Armkreise` },
+            { label: 'Hauptteil', text: `3 Runden: 10 Kniebeugen (Körpergewicht) + 8 Liegestütze + 30 s Plank + 10 Glute Bridges` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung: Hüftbeuger, Wade, Brustwirbelsäule` },
+          ],
+          zone: 'Kraft', zoneLabel: 'Grundkraft',
+        },
+        performance: {
+          summary: `Bein- & Rumpfkraft: Grundkraft-Programm`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität` },
+            { label: 'Hauptteil', text: `3 × 10 Bulgarian Split Squat + 3 × 10 Glute Bridge + 3 × 30 s Side Plank` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Kraft', zoneLabel: 'Kraft',
+        },
+        technique: {
+          summary: `Stabilität & Balance: Rumpf- und Hüftarbeit`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität` },
+            { label: 'Hauptteil', text: `3 × 10 Single-Leg RDL + 3 × 12 Glute Bridge + 3 × 30 s Bird-Dog` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Stabilität', zoneLabel: 'Stabilität',
+        },
+        recovery: {
+          summary: `Mobilität & Erholung: Ganzkörper-Dehnung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Gehen` },
+            { label: 'Hauptteil', text: `${mainMin} min Mobilitäts-Flow: Hüftöffner, Thoracic Rotations, World's Greatest Stretch` },
+            { label: 'Cool-down', text: `${cooldownMin} min tiefe Atmung + Entspannung` },
+          ],
+          zone: 'Mobilität', zoneLabel: 'Mobilität',
+        },
+      },
+      intermediate: {
+        endurance: {
+          summary: `Triathlon-Kraft: Ganzkörper-Grundprogramm`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität: Hüftöffner, Thoracic Rotations` },
+            { label: 'Hauptteil', text: `3 × 8 Goblet Squat + 3 × 8 Kurzhantel-Rudern + 3 × 10 Romanian Deadlift + 3 × 30 s Plank` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Kraft', zoneLabel: 'Kraft',
+        },
+        performance: {
+          summary: `Explosivkraft: Bein- und Rumpfprogramm`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität + 2 × 5 Kniebeugen` },
+            { label: 'Hauptteil', text: `3 × 6 Trap-Bar Deadlift + 3 × 8 Bulgarian Split Squat + 3 × 12 Pallof Press + 3 × 8 Step-Up` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Kraft', zoneLabel: 'Kraft',
+        },
+        technique: {
+          summary: `Stabilität & Balance: einbeinige Arbeit`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität` },
+            { label: 'Hauptteil', text: `3 × 8 Single-Leg RDL + 3 × 8 Step-Up mit Kniehebung + 3 × 30 s Side Plank + 3 × 10 Hip Thrust` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Stabilität', zoneLabel: 'Stabilität',
+        },
+        recovery: {
+          summary: `Mobilität & Erholung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Gehen` },
+            { label: 'Hauptteil', text: `${mainMin} min Mobilitäts-Flow: 90/90 Hip Stretch, Thoracic Rotations, Deep Squat Hold` },
+            { label: 'Cool-down', text: `${cooldownMin} min tiefe Atmung` },
+          ],
+          zone: 'Mobilität', zoneLabel: 'Mobilität',
+        },
+      },
+      advanced: {
+        endurance: {
+          summary: `Kraftausdauer: Ganzkörper-Programm mit progressive Überlastung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität + 2 × 5 Kniebeugen` },
+            { label: 'Hauptteil', text: `3 × 8 Goblet Squat + 3 × 8 Kurzhantel-Rudern + 3 × 10 Romanian Deadlift + 3 × 12 Pallof Press + 3 × 30 s Plank` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Kraft', zoneLabel: 'Kraft',
+        },
+        performance: {
+          summary: `Maximalkraft: schwere Verbundübungen`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität + 2 × 3 schwere Kniebeugen` },
+            { label: 'Hauptteil', text: `4 × 5 Trap-Bar Deadlift @ 80–85 % 1RM + 4 × 5 Goblet Squat + 3 × 6 Bulgarian Split Squat + 3 × 8 Pallof Press` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Max', zoneLabel: 'Maximalkraft',
+        },
+        technique: {
+          summary: `Explosivkraft & Plyometrie`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min Mobilität + 2 × 5 Sprünge` },
+            { label: 'Hauptteil', text: `3 × 5 Box Jumps + 3 × 6 Single-Leg RDL + 3 × 8 Step-Up mit Gewicht + 3 × 30 s Hollow Hold` },
+            { label: 'Cool-down', text: `${cooldownMin} min Dehnung` },
+          ],
+          zone: 'Power', zoneLabel: 'Power',
+        },
+        recovery: {
+          summary: `Mobilität & Erholung`,
+          main: [
+            { label: 'Aufwärmen', text: `${warmupMin} min lockeres Gehen` },
+            { label: 'Hauptteil', text: `${mainMin} min Mobilitäts-Flow: 90/90, Thoracic Rotations, World's Greatest Stretch, Deep Squat Hold` },
+            { label: 'Cool-down', text: `${cooldownMin} min tiefe Atmung` },
+          ],
+          zone: 'Mobilität', zoneLabel: 'Mobilität',
+        },
+      },
+    },
+  };
+
+  // Select template based on focus; fall back to endurance
+  const disciplineTemplates = templates[type] || templates.run;
+  const experienceTemplates = disciplineTemplates[experience] || disciplineTemplates.intermediate || disciplineTemplates.beginner;
+  const selected = experienceTemplates[focus] || experienceTemplates.endurance;
+
+  // Scale intervals based on available time
+  if (minutes < 40) {
+    selected.main = selected.main.slice(0, Math.max(2, selected.main.length - 1));
+    const lastLabel = selected.main[selected.main.length - 1].label;
+    if (lastLabel !== 'Cool-down') {
+      selected.main.push({ label: 'Cool-down', text: `${cooldownMin} min lockeres Auskühlen` });
+    }
+  }
+
+  // Enrich with performance-based zone references
+  selected.zones = [];
+  if (pd.maxHR) {
+    const hrRest = pd.restHR || 55;
+    const hrReserve = pd.maxHR - hrRest;
+    selected.zones.push(`HR-Zonen: GA1 ${Math.round(hrRest + hrReserve * 0.65)}–${Math.round(hrRest + hrReserve * 0.75)} bpm · GA2 ${Math.round(hrRest + hrReserve * 0.75)}–${Math.round(hrRest + hrReserve * 0.85)} bpm · Schwelle ${Math.round(hrRest + hrReserve * 0.85)}–${Math.round(hrRest + hrReserve * 0.95)} bpm`);
+  }
+  if (pd.ftpWatts && (type === 'bike' || type === 'brick')) {
+    const ftp = pd.ftpWatts;
+    selected.zones.push(`Watt-Zonen: GA1 <${Math.round(ftp * 0.56)} W · GA2 ${Math.round(ftp * 0.56)}–${Math.round(ftp * 0.75)} W · Sweet Spot ${Math.round(ftp * 0.88)}–${Math.round(ftp * 0.94)} W · Schwelle ${ftp} W`);
+  }
+  if (pd.swimTime && type === 'swim') {
+    const parts = pd.swimTime.split(':');
+    const totalSec = parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : parseInt(parts[0], 10) || 540;
+    const per100 = Math.round(totalSec / 4);
+    const m = Math.floor(per100 / 60);
+    const s = per100 % 60;
+    selected.zones.push(`100-m-Ziel: lockeres Tempo ${m}:${String(s + 15).padStart(2, '0')} / GA2 ${m}:${String(s + 5).padStart(2, '0')} / Wettkampf ${m}:${String(s).padStart(2, '0')} / Tempo ${m}:${String(Math.max(0, s - 5)).padStart(2, '0')}`);
+  }
+  if (pd.fiveKTime && type === 'run') {
+    const parts = pd.fiveKTime.split(':');
+    const totalSec = parts.length === 2 ? parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10) : parseInt(parts[0], 10) || 1500;
+    const secPerKm = Math.round(totalSec / 5);
+    const m = Math.floor(secPerKm / 60);
+    const s = secPerKm % 60;
+    selected.zones.push(`Pace-Zonen: lockeres Tempo ${m}:${String(s + 30).padStart(2, '0')} / GA2 ${m}:${String(s + 15).padStart(2, '0')} / 10K-Pace ${m}:${String(s + 5).padStart(2, '0')} / 5K-Pace ${m}:${String(s).padStart(2, '0')}`);
+  }
+
+  return selected;
 }
 
 const openAnnualModal = () => {
@@ -1450,6 +2062,7 @@ updateAvailabilitySummary();
 renderAvailabilityOverview();
 renderStrengthExercises();
 document.addEventListener('click', handleCollapsibleToggle);
+bindWorkoutDetailToggles();
 if (!hasAnySavedData) {
   loadDemoPlan();
 } else {
@@ -1470,6 +2083,114 @@ function describeArc(cx, cy, r, startAngle, endAngle) {
   const end = polarToCartesian(cx, cy, r, startAngle);
   const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
   return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFlag} 0 ${end.x} ${end.y} Z`;
+}
+
+function renderDisciplineBreakdown(sessions) {
+  const barsEl = document.getElementById('discBars');
+  if (!barsEl) return;
+  const minutesByType = { swim: 0, bike: 0, run: 0, strength: 0 };
+  sessions.forEach((s) => {
+    if (minutesByType[s.type] !== undefined) minutesByType[s.type] += s.minutes || 0;
+  });
+  const maxMin = Math.max(1, ...Object.values(minutesByType));
+  const labels = { swim: 'Schwimmen', bike: 'Rad', run: 'Laufen', strength: 'Kraft' };
+  const order = ['swim', 'bike', 'run', 'strength'];
+  barsEl.innerHTML = order.map((type) => {
+    const min = minutesByType[type];
+    const h = (min / 60).toFixed(1).replace('.0', '');
+    const pct = Math.round((min / maxMin) * 100);
+    return `<div class="disc-bar-row">
+      <span class="disc-bar-label">${labels[type]}</span>
+      <div class="disc-bar-track"><div class="disc-bar-fill ${type}" style="width:${pct}%"></div></div>
+      <span class="disc-bar-value">${h} h</span>
+    </div>`;
+  }).join('');
+}
+
+// ---------- Weekly progress tracking ----------
+
+const PROGRESS_STORAGE_KEY = 'trifit_completed_sessions';
+
+function getCompletedSessions() {
+  try {
+    return JSON.parse(localStorage.getItem(PROGRESS_STORAGE_KEY)) || {};
+  } catch (_) { return {}; }
+}
+
+function saveCompletedSession(sessionId) {
+  const completed = getCompletedSessions();
+  const weekKey = getWeekKey(new Date());
+  if (!completed[weekKey]) completed[weekKey] = [];
+  if (!completed[weekKey].includes(sessionId)) {
+    completed[weekKey].push(sessionId);
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(completed));
+  }
+}
+
+function removeCompletedSession(sessionId) {
+  const completed = getCompletedSessions();
+  const weekKey = getWeekKey(new Date());
+  if (completed[weekKey]) {
+    completed[weekKey] = completed[weekKey].filter((id) => id !== sessionId);
+    localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(completed));
+  }
+}
+
+function getWeekKey(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  const weekNum = 1 + Math.round(((d - week1) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+function handleCompleteToggle(event) {
+  const btn = event.target.closest('.complete-btn');
+  if (!btn) return;
+  const sessionId = btn.dataset.sessionId;
+  if (!sessionId) return;
+  const completed = getCompletedSessions();
+  const weekKey = getWeekKey(new Date());
+  const isDone = completed[weekKey] && completed[weekKey].includes(sessionId);
+  if (isDone) {
+    removeCompletedSession(sessionId);
+    btn.classList.remove('done');
+    btn.textContent = '○ Erledigen';
+  } else {
+    saveCompletedSession(sessionId);
+    btn.classList.add('done');
+    btn.textContent = '✓ Erledigt';
+  }
+  renderProgressChart();
+}
+
+function renderProgressChart() {
+  const el = document.getElementById('progressChart');
+  if (!el) return;
+  const completed = getCompletedSessions();
+  const weekKeys = Object.keys(completed).sort().slice(-8);
+  if (!weekKeys.length) {
+    el.innerHTML = '<div class="empty-state">Noch keine Fortschritte. Klicke „Erledigen" bei einer Einheit.</div>';
+    return;
+  }
+  const maxCount = Math.max(1, ...weekKeys.map((k) => (completed[k] || []).length));
+  el.innerHTML = `<div class="progress-bars">${weekKeys.map((wk) => {
+    const count = (completed[wk] || []).length;
+    const pct = Math.round((count / maxCount) * 100);
+    return `<div class="progress-bar-col">
+      <span class="progress-count">${count}</span>
+      <div class="progress-track"><div class="progress-fill" style="height:${pct}%"></div></div>
+      <span class="progress-week">${wk.replace('-', ' ')}</span>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function bindCompleteButtons() {
+  const el = document.getElementById('weekPlanList');
+  if (!el || el.dataset.completeBound) return;
+  el.dataset.completeBound = '1';
+  el.addEventListener('click', handleCompleteToggle);
 }
 
 function renderDisciplinePie(emphasis) {

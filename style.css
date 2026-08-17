@@ -340,6 +340,36 @@ h3 {
   gap: 14px;
 }
 
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 700px) {
+  .form-grid-3 { grid-template-columns: 1fr; }
+}
+
+.optional-fields {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.optional-fields legend {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  padding: 0 6px;
+}
+
+.optional-tag {
+  font-weight: 400;
+  color: var(--text-3);
+  font-size: 0.78rem;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -595,6 +625,69 @@ input::placeholder {
 .summary-card.event-card .sum-icon {
   color: var(--run);
   background: rgba(251, 191, 36, 0.12);
+}
+
+/* ---------- Discipline breakdown ---------- */
+
+.discipline-breakdown {
+  margin-bottom: 20px;
+}
+
+.discipline-breakdown h4 {
+  margin: 0 0 10px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.disc-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.disc-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+
+.disc-bar-label {
+  width: 80px;
+  flex: 0 0 80px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.disc-bar-track {
+  flex: 1;
+  height: 10px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.disc-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.disc-bar-fill.swim { background: var(--swim, #38bdf8); }
+.disc-bar-fill.bike { background: var(--bike, #4ade80); }
+.disc-bar-fill.run { background: var(--run, #fbbf24); }
+.disc-bar-fill.strength { background: var(--strength, #a78bfa); }
+
+.disc-bar-value {
+  width: 50px;
+  flex: 0 0 50px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* ---------- Charts ---------- */
@@ -886,6 +979,176 @@ input::placeholder {
   color: var(--text-2);
   line-height: 1.6;
   font-size: 0.9rem;
+}
+
+.session-summary {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-2);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.session-workout-detail {
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 6px;
+  cursor: pointer;
+}
+
+.session-workout-body {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+
+.session-workout-detail.open .session-workout-body {
+  display: flex;
+}
+
+.workout-step {
+  padding-left: 10px;
+  border-left: 2px solid var(--accent);
+}
+
+.workout-step strong {
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.workout-detail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.workout-detail-label {
+  pointer-events: none;
+}
+
+.zone-references {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.zone-ref {
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 500;
+  padding-left: 10px;
+  border-left: 2px solid var(--accent);
+}
+
+.phase-explanation {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+.complete-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.complete-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.complete-btn.done {
+  background: rgba(34, 211, 238, 0.12);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.progress-panel {
+  margin-bottom: 20px;
+}
+
+.progress-panel h4 {
+  margin: 0 0 10px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  font-weight: 700;
+}
+
+.progress-chart {
+  min-height: 60px;
+}
+
+.progress-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 120px;
+}
+
+.progress-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  height: 100%;
+}
+
+.progress-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.progress-track {
+  flex: 1;
+  width: 100%;
+  background: var(--surface-2);
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+}
+
+.progress-fill {
+  width: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: height 0.4s ease;
+}
+
+.progress-week {
+  font-size: 0.65rem;
+  color: var(--text-3);
+  white-space: nowrap;
 }
 
 .empty-state {
@@ -1864,6 +2127,28 @@ input::placeholder {
 .day-cell.selected.has-time::after {
   background: #061018;
 }
+
+/* Phase colors for annual calendar */
+.day-cell.phase-base {
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.25);
+}
+.day-cell.phase-build {
+  background: rgba(251, 191, 36, 0.10);
+  border-color: rgba(251, 191, 36, 0.30);
+}
+.day-cell.phase-peak {
+  background: rgba(239, 68, 68, 0.10);
+  border-color: rgba(239, 68, 68, 0.30);
+}
+.day-cell.phase-taper {
+  background: rgba(74, 222, 128, 0.10);
+  border-color: rgba(74, 222, 128, 0.30);
+}
+.day-cell.phase-base:not(.selected) { color: var(--swim, #38bdf8); }
+.day-cell.phase-build:not(.selected) { color: var(--run, #fbbf24); }
+.day-cell.phase-peak:not(.selected) { color: #ef4444; }
+.day-cell.phase-taper:not(.selected) { color: #4ade80; }
 
 /* ---------- Toasts ---------- */
 

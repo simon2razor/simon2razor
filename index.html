@@ -11,6 +11,7 @@
     <meta property="og:title" content="TriFit Coach" />
     <meta property="og:description" content="Persönliche Triathlon-Trainingspläne mit Verfügbarkeitskalender, Saisonplan und Kraftübungen." />
     <meta property="og:site_name" content="TriFit Coach" />
+    <link rel="manifest" href="manifest.json" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏊</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -177,6 +178,32 @@
               </div>
             </fieldset>
 
+            <fieldset class="optional-fields" id="performanceFieldset">
+              <legend>Leistungsdaten <span class="optional-tag">(optional – verbessert die Planung)</span></legend>
+              <div class="form-grid-3">
+                <label>
+                  <span>400 m Schwimmzeit</span>
+                  <input id="swimTime" name="swimTime" type="text" placeholder="z. B. 8:30" autocomplete="off" />
+                </label>
+                <label>
+                  <span>FTP (Watt)</span>
+                  <input id="ftpWatts" name="ftpWatts" type="number" min="50" max="500" placeholder="z. B. 220" />
+                </label>
+                <label>
+                  <span>5-km-Bestzeit</span>
+                  <input id="fiveKTime" name="fiveKTime" type="text" placeholder="z. B. 24:00" autocomplete="off" />
+                </label>
+                <label>
+                  <span>Maximale HF (bpm)</span>
+                  <input id="maxHR" name="maxHR" type="number" min="120" max="220" placeholder="z. B. 185" />
+                </label>
+                <label>
+                  <span>Ruhepuls (bpm)</span>
+                  <input id="restHR" name="restHR" type="number" min="35" max="100" placeholder="z. B. 55" />
+                </label>
+              </div>
+            </fieldset>
+
             <div class="availability-box">
               <div class="availability-header">
                 <div>
@@ -238,6 +265,16 @@
               <span class="label">Wettkampf</span>
               <strong id="eventSummary">Kein Ziel gesetzt</strong>
             </article>
+          </div>
+
+          <div class="discipline-breakdown" id="disciplineBreakdown">
+            <h4>Deine Woche</h4>
+            <div class="disc-bars" id="discBars"></div>
+          </div>
+
+          <div class="progress-panel">
+            <h4>Wochenfortschritt</h4>
+            <div id="progressChart" class="progress-chart"></div>
           </div>
 
           <div class="collapsible-panel">
@@ -375,5 +412,12 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>
