@@ -4,11 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
-    <title>TriFit Coach</title>
-    <meta
-      name="description"
-      content="Persönliche Triathlon-Trainingspläne mit Verfügbarkeitskalender, Saisonplan und Kraftübungen."
-    />
+    <title>TriFit Coach – Persönlicher Triathlon-Trainingsplan</title>
+    <meta name="description" content="Persönliche Triathlon-Trainingspläne mit Verfügbarkeitskalender, Saisonplan und Kraftübungen." />
+    <meta name="theme-color" content="#060b14" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="TriFit Coach" />
+    <meta property="og:description" content="Persönliche Triathlon-Trainingspläne mit Verfügbarkeitskalender, Saisonplan und Kraftübungen." />
+    <meta property="og:site_name" content="TriFit Coach" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏊</text></svg>" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -54,9 +57,15 @@
               <p class="section-tag">Athlet-Profil</p>
               <h2>Deinen Plan erstellen</h2>
             </div>
+            <div class="header-actions">
+              <button type="button" id="resetAllBtn" class="ghost-btn mini-btn" title="Alle gespeicherten Daten löschen">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Zurücksetzen
+              </button>
+            </div>
           </div>
 
-          <form id="plannerForm" class="planner-form" novalidate>
+          <form id="plannerForm" class="planner-form">
             <fieldset class="form-section">
               <div class="section-heading">
                 <span class="step-badge">1</span>
@@ -69,7 +78,8 @@
               <div class="field-grid">
                 <label>
                   <span>Name</span>
-                  <input id="athleteName" name="athleteName" type="text" value="Mia" placeholder="Dein Name" />
+                  <input id="athleteName" name="athleteName" type="text" value="Mia" placeholder="Dein Name" required />
+                  <span class="field-error">Bitte gib deinen Namen ein.</span>
                 </label>
 
                 <label>
@@ -323,6 +333,23 @@
             </div>
             <div id="annualGridModal" class="annual-grid annual-grid-modal"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="confirmModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+      <div class="modal-backdrop" id="confirmBackdrop"></div>
+      <div class="modal-body confirm-modal">
+        <div class="modal-header">
+          <h3 id="confirmTitle">Wirklich alles löschen?</h3>
+          <button type="button" id="confirmCloseBtn" class="modal-close" aria-label="Abbrechen">&times;</button>
+        </div>
+        <div class="modal-content">
+          <p>Alle gespeicherten Zeitfenster und Einstellungen werden gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.</p>
+        </div>
+        <div class="modal-controls">
+          <button type="button" id="confirmCancelBtn" class="ghost-btn">Abbrechen</button>
+          <button type="button" id="confirmOkBtn" class="danger-btn">Ja, alles löschen</button>
         </div>
       </div>
     </div>

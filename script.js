@@ -92,6 +92,8 @@ const workoutLibrary = {
   ],
 };
 
+let currentPlanData = null; // stores the latest generated plan for export
+
 const weeklyStrengthRotation = [[0, 1, 2], [3, 4, 5], [1, 3, 5]];
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const labels = { Mon: 'Montag', Tue: 'Dienstag', Wed: 'Mittwoch', Thu: 'Donnerstag', Fri: 'Freitag', Sat: 'Samstag', Sun: 'Sonntag' };
@@ -297,7 +299,6 @@ function loadFormState() {
 }
 
 function resetAllData() {
-  if (!window.confirm('Möchtest du wirklich alle gespeicherten Zeiten und Einstellungen löschen?')) return;
   Object.keys(annualAvailability).forEach((key) => delete annualAvailability[key]);
   try {
     localStorage.removeItem(STORAGE_KEY);
@@ -311,6 +312,40 @@ function resetAllData() {
   generatePlanFromForm();
   showToast('Alle Daten wurden gelöscht. Der Demo-Plan ist jederzeit über die Schaltfläche verfügbar.');
 }
+
+// Wire up confirm modal
+const confirmModal = document.getElementById('confirmModal');
+const confirmOkBtn = document.getElementById('confirmOkBtn');
+const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+const confirmCloseBtn = document.getElementById('confirmCloseBtn');
+const confirmBackdrop = document.getElementById('confirmBackdrop');
+
+function showConfirmModal() {
+  if (!confirmModal) return;
+  confirmModal.classList.remove('hidden');
+  confirmModal.setAttribute('aria-hidden', 'false');
+  confirmOkBtn?.focus();
+}
+
+function hideConfirmModal() {
+  if (!confirmModal) return;
+  confirmModal.classList.add('hidden');
+  confirmModal.setAttribute('aria-hidden', 'true');
+}
+
+confirmOkBtn?.addEventListener('click', () => { hideConfirmModal(); resetAllData(); });
+confirmCancelBtn?.addEventListener('click', hideConfirmModal);
+confirmCloseBtn?.addEventListener('click', hideConfirmModal);
+confirmBackdrop?.addEventListener('click', hideConfirmModal);
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && confirmModal && !confirmModal.classList.contains('hidden')) {
+    hideConfirmModal();
+  }
+});
+
+// Wire up reset buttons
+const resetAllBtn = document.getElementById('resetAllBtn');
+resetAllBtn?.addEventListener('click', showConfirmModal);
 
 const disciplineIcons = {
   swim: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 7c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/><path d="M2 12c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/><path d="M2 17c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2"/></svg>',
@@ -380,7 +415,7 @@ function renderAvailabilityOverview() {
   const editBtn = document.getElementById('editAvailabilityBtn');
   if (editBtn) editBtn.addEventListener('click', openAnnualModal);
   const resetBtn = document.getElementById('resetAvailabilityBtn');
-  if (resetBtn) resetBtn.addEventListener('click', resetAllData);
+  if (resetBtn) resetBtn.addEventListener('click', showConfirmModal);
 
   updateAvailabilitySummary();
 }
@@ -1107,6 +1142,20 @@ function generatePlanFromForm() {
   const totalMinutes = sessions.reduce((sum, session) => sum + session.minutes, 0);
   const totalHours = totalMinutes / 60;
 
+  // Store plan data for export
+  currentPlanData = {
+    athlete: name,
+    goal: config.label,
+    goalKey: goal,
+    eventName: eventName || null,
+    eventDate: eventDate || null,
+    eventType: eventType,
+    phase: phase || null,
+    weeksUntil: weeksUntil,
+    sessions: sessions,
+    workoutLibrary: Object.fromEntries(Object.keys(workoutLibrary).map((cat) => [cat, workoutLibrary[cat].map((ex) => ({ name: ex.name, focus: ex.focus, benefit: ex.benefit, sets: ex.sets, equipment: ex.equipment || null, howto: ex.howto }))]))
+  };
+
   const selectedFocus = focus === 'performance'
     ? 'Leistung + Power'
     : focus === 'technique'
@@ -1125,26 +1174,32 @@ function generatePlanFromForm() {
   workoutCount.textContent = String(sessions.length);
   focusMatch.textContent = selectedFocus;
 
-  weekPlanList.innerHTML = sessions
-    .sort((a, b) => weekdays.indexOf(a.day) - weekdays.indexOf(b.day))
-    .map((session) => `
-      <article class="day-plan-card ${session.type}">
-        <header>
-          <div class="card-title-row">
-            <span class="disc-icon ${session.type}">${disciplineIcons[session.type] || ''}</span>
-            <h4>${labels[session.day]}</h4>
-          </div>
-          <span class="pill ${session.type}">${session.type}</span>
-        </header>
-        <div class="session-meta">
-          <span>${session.timeWindow}</span>
-          <span>${session.duration}</span>
-          <span>${session.intensity}</span>
-        </div>
-        <p class="session-description">${session.description}</p>
-      </article>
-    `)
-    .join('');
+  weekPlanList.innerHTML = (() => {
+    const sorted = sessions.sort((a, b) => weekdays.indexOf(a.day) - weekdays.indexOf(b.day));
+    const grouped = {};
+    sorted.forEach((s) => { (grouped[s.day] = grouped[s.day] || []).push(s); });
+    return Object.keys(grouped).map((day) => `
+      <div class="day-group">
+        <h4 class="day-group-header">${labels[day] || day}</h4>
+        ${grouped[day].map((session) => `
+          <article class="day-plan-card ${session.type}">
+            <header>
+              <div class="card-title-row">
+                <span class="disc-icon ${session.type}">${disciplineIcons[session.type] || ''}</span>
+                <h4>${session.timeWindow}</h4>
+              </div>
+              <span class="pill ${session.type}">${session.type}</span>
+            </header>
+            <div class="session-meta">
+              <span>${session.duration}</span>
+              <span>${session.intensity}</span>
+            </div>
+            <p class="session-description">${session.description}</p>
+          </article>
+        `).join('')}
+      </div>
+    `).join('');
+  })();
 
   renderStrengthExercises();
 }
@@ -1308,22 +1363,59 @@ if (closeAnnualModal) {
   });
 }
 
+// Escape key closes open modals
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (yearModal && !yearModal.classList.contains('hidden')) {
+    yearModal.classList.add('hidden');
+    yearModal.setAttribute('aria-hidden', 'true');
+    const fabContainerEl = document.getElementById('fabContainer');
+    if (fabContainerEl) fabContainerEl.style.visibility = '';
+  }
+});
+
 plannerForm.addEventListener('submit', (event) => {
   event.preventDefault();
   const formData = new FormData(plannerForm);
   const hasAvailability = Object.values(getAnnualAvailabilityMap()).some((day) => (day.minutes || 0) > 0);
   const hasEventDate = Boolean(formData.get('eventDate'));
 
+  // Validate required fields
+  const nameInput = document.getElementById('athleteName');
+  const nameLabel = nameInput?.closest('label');
+  let valid = true;
+
+  if (nameLabel && (!formData.get('athleteName') || !formData.get('athleteName').trim())) {
+    nameLabel.classList.add('has-error');
+    valid = false;
+  } else if (nameLabel) {
+    nameLabel.classList.remove('has-error');
+  }
+
   if (!hasAvailability && !hasEventDate) {
     showToast('Trage zuerst ein Zeitfenster im Jahreskalender ein – daraus baut der Coach deinen Plan.', 'error');
     plannerForm.classList.remove('shake');
     void plannerForm.offsetWidth;
     plannerForm.classList.add('shake');
-    return;
+    valid = false;
   }
+
+  if (!valid) return;
+
+  // Show loading state
+  const outputPanel = document.querySelector('.output-panel');
+  if (outputPanel) outputPanel.classList.add('generating');
 
   persistFormState();
   generatePlanFromForm();
+
+  // Remove loading state after a brief delay
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      if (outputPanel) outputPanel.classList.remove('generating');
+    }, 200);
+  });
+
   showToast('Dein Trainingsplan wurde aktualisiert.');
 });
 
@@ -1453,7 +1545,7 @@ function renderWeeklyVolumeChart(availability) {
     const x = i * (barW + 6) + 6;
     const y = h - barH - 10;
     const color = i % 3 === 0 ? '#38bdf8' : i % 3 === 1 ? '#a78bfa' : '#fbbf24';
-    return `<g data-date="${currentWeekDates[i]}"><rect x="${x}" y="${y}" width="${barW}" height="${barH}" fill="${color}" rx="4"></rect><text x="${x + barW/2}" y="${h - 2}" font-size="10" text-anchor="middle" fill="var(--muted)">${weekdays[i]}</text></g>`;
+    return `<g data-date="${currentWeekDates[i]}"><rect x="${x}" y="${y}" width="${barW}" height="${barH}" fill="${color}" rx="4"></rect><text x="${x + barW/2}" y="${h - 2}" font-size="10" text-anchor="middle" fill="var(--text-3)">${weekdays[i]}</text></g>`;
   }).join('');
   barChartEl.innerHTML = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img">${bars}</svg>`;
 
@@ -1490,11 +1582,12 @@ function initDraggableFABs() {
     let startY = 0;
     let origLeft = 0;
     let origTop = 0;
+    let hasMoved = false;
 
     const onDown = (e) => {
       e.preventDefault();
       dragging = true;
-      btn.classList.add('dragging');
+      hasMoved = false;
       startX = e.clientX || (e.touches && e.touches[0].clientX);
       startY = e.clientY || (e.touches && e.touches[0].clientY);
       origLeft = parseInt(btn.style.left || (window.innerWidth - btn.offsetLeft - btn.offsetWidth) || 0, 10);
@@ -1509,6 +1602,7 @@ function initDraggableFABs() {
       const my = ev.clientY;
       const dx = mx - startX;
       const dy = my - startY;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasMoved = true;
       btn.style.left = `${origLeft + dx}px`;
       btn.style.top = `${origTop + dy}px`;
     };
@@ -1516,7 +1610,6 @@ function initDraggableFABs() {
     const onUp = () => {
       if (!dragging) return;
       dragging = false;
-      btn.classList.remove('dragging');
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', onUp);
       // persist
@@ -1530,18 +1623,18 @@ function initDraggableFABs() {
 
     // click handler for actions
     btn.addEventListener('click', (ev) => {
-      // ignore click if dragging
-      if (btn.classList.contains('dragging')) { ev.stopPropagation(); return; }
+      // ignore click if the pointer moved (was a drag)
+      if (hasMoved) { hasMoved = false; return; }
       const action = btn.dataset.action;
       if (action === 'annual') openAnnualModal();
       if (action === 'demo') loadDemoPlan();
       if (action === 'export') {
-        const payload = { annualAvailability, event: { name: document.getElementById('eventName')?.value || '', date: document.getElementById('eventDate')?.value || '', type: document.getElementById('eventType')?.value || '' } };
+        const payload = currentPlanData || { annualAvailability, event: { name: document.getElementById('eventName')?.value || '', date: document.getElementById('eventDate')?.value || '', type: document.getElementById('eventType')?.value || '' } };
         const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'triathlon-plan-export.json'; a.click(); URL.revokeObjectURL(url);
-        showToast('Plan wurde als JSON-Datei exportiert.');
+        a.href = url; a.download = 'trifit-coach-plan.json'; a.click(); URL.revokeObjectURL(url);
+        showToast('Dein Trainingsplan wurde als JSON-Datei exportiert.');
       }
     });
   });
