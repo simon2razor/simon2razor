@@ -60,7 +60,7 @@ const workoutLibrary = {
     { name: 'Big Gear / Torque Intervals', focus: 'Kraftausdauer', benefit: 'Erhöht Kraft bei niedriger Trittfrequenz – wichtig für Hügel und Gegenwind.', sets: '4 x 4–8 min @ 45–60 U/min', howto: 'Schalte in einen schweren Gang, sodass du nur rund 45–60 Umdrehungen pro Minute trittst. Halte die Leistung dabei konstant – meist sitzend, Rumpf ruhig, mit bewusst hohem Drehmoment pro Pedalumdrehung. Bei Knie- oder Rückenbeschwerden die Trittfrequenz um 10 U/min erhöhen. Maximal 1–2 solcher Einheiten pro Woche, nie an aufeinanderfolgenden Tagen.' },
   ],
   run: [
-    { name: 'Strides', focus: 'Laufökonomie', benefit: 'Verbessert Technik und Schrittfrequenz.', sets: '4–8 x 20–30 s', howto: 'Lauf nach dem Warm-up 20–30 Sekunden in der Anstrengung eines schnellen Rennens (rund 85–95 % deines Meilen-Tempos). Schleich dich die ersten 5 Sekunden ins Tempo ein, bleib aufrecht und entspannt, dann mach kurze, schnelle Schritte statt weiter Sprünge: hohe Schrittfrequenz, Mittelfuß-Aufsatz, Arme aktiv. Zwischen den Wiederholungen 2 Minuten vollständig erholen, danach locker auslaufen. Ideal 2–3× pro Woche als Einschub in leichte Läufe.' },
+    { name: 'Strides', focus: 'Laufökonomie', benefit: 'Verbessert Technik und Schrittfrequenz.', sets: '4–8 x 20–30 s', howto: 'Lauf nach dem Warm-up 20–30 Sekunden in der Anstrengung eines schnellen Rennens (rund 85–95 % deines Kilometertempos). Schleich dich die ersten 5 Sekunden ins Tempo ein, bleib aufrecht und entspannt, dann mach kurze, schnelle Schritte statt weiter Sprünge: hohe Schrittfrequenz, Mittelfuß-Aufsatz, Arme aktiv. Zwischen den Wiederholungen 2 Minuten vollständig erholen, danach locker auslaufen. Ideal 2–3× pro Woche als Einschub in leichte Läufe.' },
     { name: 'Tempo Runs', focus: 'Laktatschwelle', benefit: 'Erhöht konstante Renngeschwindigkeit.', sets: '20–30 min', howto: 'Lauf 20–30 Minuten am Stück in einem Tempo, das sich komfortabel hart anfühlt („comfortably hard", RPE 7–8) – deutlich schneller als normal, aber durchhaltbar. Das trainiert die Laktatschwelle: Du spürst die Beine, kannst aber noch in kurzen Sätzen sprechen. Halte das Tempo gleichmäßig, Oberkörper aufrecht, Arme ruhig. Starte nach einem 10–15-minütigen Warm-up und rolle am Ende 5–10 Minuten aus.' },
     { name: 'Long Easy Run', focus: 'Grundlagenausdauer', benefit: 'Baut Ausdauer und muskuläre Anpassung.', sets: '60–90 min', howto: 'Lauf 60–90 Minuten in einem Gesprächstempo – etwa 55–75 % deines 5-Kilometer-Renntempos (Zielwert um 65 %), also rund 40–55 Sekunden pro Kilometer langsamer als dein 5K-Tempo. Du solltest dabei durchgehend ganze Sätze sprechen können, der Puls liegt bei 65–75 % der maximalen Herzfrequenz. Halte den Lauf bewusst locker und gleichmäßig – hier entsteht die Grundlagenausdauer, die deine Renngeschwindigkeit trägt.' },
     { name: 'Fartlek (Speed Play)', focus: 'Tempo-Wechsel', benefit: 'Verbessert Tempowechselfähigkeit und VO2max, ohne harte Intervalle.', sets: '20–30 min', howto: 'Lauf nach dem Warm-up am Stück und wechsle die Geschwindigkeit nach Gefühl oder Landmarken: zum Beispiel eine Minute zügig, eine Minute locker, immer wieder – oder bergauf schneller, bergab entspannen. Die schnellen Abschnitte liegen zwischen 10-km- und Halbmarathon-Tempo, die Erholungen sind ein leichtes Joggen, nie ein Gehen. Weil alles nach Gefühl läuft, passt sich das Tempo dem Gelände an und du bleibst auch auf unruhigem Untergrund motiviert.' },
@@ -69,9 +69,9 @@ const workoutLibrary = {
   ],
   brick: [
     { name: 'Short Brick (45–60 min Rad + 15 min Lauf)', focus: 'Koppeln', benefit: 'Gewöhnt Beine an Wechsel vom Rad zum Laufen.', sets: '45–60 min Rad + 15 min Lauf', howto: 'Fahr zuerst deine gewohnte Rad-Einheit – in etwa so lange wie dein Rad-Rennteil. Im Wechsel (T2) ziehst du Radschuhe aus, nimmst den Helm ab und ziehst die Laufschuhe an, dann läufst du direkt weiter. Der Lauf ist bewusst kurz (rund 15 Minuten) und im lockeren Tempo – wichtig ist, dass die Beine das Gefühl des Radfahrens ablegen und aufs Laufen umschalten. Diese Anpassung passiert vor allem in den ersten 10–20 Minuten nach dem Rad, der Lauf muss dafür nicht lang sein.' },
-    { name: 'Race-Pace Brick', focus: 'Wettkampfsimulation', benefit: 'Trainiert Renntempo nach Radfahrt.', sets: '60–90 min Rad + 20–30 min Lauf', howto: 'Simuliere die Wechselsituation deines Rennens: Radabschnitt im Renntempo, danach zügiger Wechsel und sofort der Lauf im Rennlauf-Tempo – nicht schneller. Beginne die ersten 2–3 Minuten kontrolliert, bis die Beine das flache Radgefühl verloren haben, dann übernimm das Zieltempo. Übe dabei deinen T2-Ablauf: Schuhe, Helm, Verpflegung – alles in fester Reihenfolge. Am Ende locker auslaufen und die Einheit im Trainingstagebuch mit Werten notieren.' },
+    { name: 'Race-Pace Brick', focus: 'Wettkampfsimulation', benefit: 'Trainiert Renntempo nach Radfahrt.', sets: '60–90 min Rad + 20–30 min Lauf', howto: 'Simuliere die Wechselsituation deines Rennens: Radabschnitt im Renntempo, danach zügiger Wechsel und sofort der Lauf im Rennlauf-Tempo – nicht schneller. Beginne die ersten 2–3 Minuten kontrolliert, bis die Beine das flache Radgefühl verloren haben, dann übernimm das Zieltempo. Übe dabei deinen T2-Ablauf: Schuhe, Helm, Verpflegung – alles in fester Reihenfolge. Am Ende locker auslaufen und die Einheit im Trainingsstagebuch mit Werten notieren.' },
     { name: 'T2 Transition Training', focus: 'Wechsel T2', benefit: 'Macht den Rad-Lauf-Wechsel sicher und spart wertvolle Sekunden.', sets: '5–8 x kompletter T2', howto: 'Leg alles bereit, als wäre es Renntag: Laufschuhe mit offenen Schnürsenkeln, Renngürtel, Kappe, Verpflegung. Stelle die Reihenfolge fest (Rad abstellen, Helm ab, Schuhe an, Gürtel um, loslaufen) und übe sie nach einer kurzen Radfahrt oder am Ende einer Rad-Einheit mehrmals hintereinander – Ziel unter 60–90 Sekunden. Wiederhole den Ablauf, bis er automatisch abläuft. Der Wechsel unter Zeitdruck ist der einzige Trainingsreiz, der den Renntag wirklich vorbereitet.' },
-    { name: 'Long Brick (lange Radfahrt + Lauf)', focus: 'Ausdauer-Koppeln', benefit: 'Simuliert den Rennverlauf und übt das Laufen auf müden Beinen.', sets: '2–3 h Rad + 30–45 min Lauf', howto: 'Fahre eine lange Radfahrt in Renntempo-Erholung und steige dann direkt in einen 30–45-minütigen Lauf um – die ersten 5–10 Minuten bewusst 15–30 Sekunden pro Kilometer langsamer als sonst, bis sich die Beine umgestellt haben. Nutze diese Einheit für deine Renner-Ernährung: Iss und trinke, was du auch am Renntag planst. Nach so einem Brick brauchst du 48–72 Stunden Erholung, plane danach leichte Tage ein.' },
+    { name: 'Long Brick (lange Radfahrt + Lauf)', focus: 'Ausdauer-Koppeln', benefit: 'Simuliert den Rennverlauf und übt das Laufen auf müden Beinen.', sets: '2–3 h Rad + 30–45 min Lauf', howto: 'Fahre eine lange Radfahrt in einem lockeren Tempo und steige dann direkt in einen 30–45-minütigen Lauf um – die ersten 5–10 Minuten bewusst 15–30 Sekunden pro Kilometer langsamer als sonst, bis sich die Beine umgestellt haben. Nutze diese Einheit für deine Rennernährung: Iss und trinke, was du auch am Renntag planst. Nach so einem Brick brauchst du 48–72 Stunden Erholung, plane danach leichte Tage ein.' },
   ],
   mobility: [
     { name: 'Thoracic Rotations', focus: 'Brustwirbelsäule', benefit: 'Verbessert Schwimm- und Fahrhaltung.', sets: '1–2 x 6–10/Seite', howto: 'Leg dich auf die Seite, Hüfte und Knie sind gebeugt, das obere Knie liegt auf einem Kissen abgestützt, damit das Becken stabil bleibt. Streck beide Arme vor dir aus und öffne den oberen Arm langsam über die Decke weiter Richtung Boden hinter dir, während der Blick der Hand folgt. Atme am Ende der Drehung tief in die Brustwirbelsäule hinein, halte kurz und komm kontrolliert zurück. Wichtig: Die Bewegung kommt aus der Brustwirbelsäule, Becken und unterer Rücken bleiben ruhig.' },
@@ -562,10 +562,10 @@ function getPhaseScale(phase) {
 const phaseExplanations = {
   Base: {
     swim: 'In der Grundlagenphase baust du eine solide aerobe Basis auf. Das Tempo ist locker, der Fokus liegt auf Technik und Ausdauer.',
-    bike: 'Die Grundlage für deine Radleistung wird gelegt. Lockere,长距离Fahrten stoffwechsel- und gefäßsystem.',
-    run: 'Du gewöhnst deinen Körper an die Belastung. Lockere Läufe im GA1 stoffwechsel- und gefäßsystem.',
+    bike: 'Die Grundlage für deine Radleistung wird gelegt. Lockere, lange Fahrten stärken das Stoffwechsel- und Gefäßsystem.',
+    run: 'Du gewöhnst deinen Körper an die Belastung. Lockere Läufe im GA1 stärken das Stoffwechsel- und Gefäßsystem.',
     strength: 'Kraft und Stabilität werden aufgebaut, um Verletzungen vorzubeugen und die Bewegungsqualität zu verbessern.',
-    default: 'Du baust jetzt eine solide Basis auf – ausdauer, Technik und Regeneration stehen im Vordergrund.',
+    default: 'Du baust jetzt eine solide Basis auf – Ausdauer, Technik und Regeneration stehen im Vordergrund.',
   },
   Build: {
     swim: 'Die Intensität steigt. Du arbeitest an deinem Schwimm-Pacing und baust Schwelle und Kraft im Wasser auf.',
@@ -583,7 +583,7 @@ const phaseExplanations = {
   },
   Taper: {
     swim: 'Lockere Schwimmeinheiten mit kurzen Impulsen. Du erholst dich und kommst frisch an den Start.',
-    bike: 'Kurze, lockere Einheiten mit wenigen kurzen Schubbe. Die Beine sollen frisch bleiben.',
+    bike: 'Kurze, lockere Einheiten mit wenigen kurzen Schüben. Die Beine sollen frisch bleiben.',
     run: 'Leichte Läufe mit kurzen Tempogalops. Der Körper erholt sich und speichert Energie.',
     strength: 'Nur noch leichte Mobilitäts- und Stabilitätsarbeit. Kein Kraftverlust, volle Erholung.',
     default: 'Du erholst dich und sparst Energie für den Wettkampf. Kurze, lockere Impulse reichen.',
@@ -1549,10 +1549,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
     bike: {
       beginner: {
         endurance: {
-          summary: `Grundlage:锁ere Fahrt mit Kadenzarbeit`,
+          summary: `Grundlage: lockere Fahrt mit Kadenzarbeit`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min leichtes Treten, 90–100 U/min Kadenz` },
-            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1, gleichmäßig, Kadenz 85–95 U/min` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1, gleichmäßig, Kadenz 85–95 U/min` },
             { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
           ],
           zone: 'GA1', zoneLabel: 'Locker',
@@ -1588,10 +1588,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
       },
       intermediate: {
         endurance: {
-          summary: `Grundlage:锁ere Fahrt mit Kadenz-Zielen`,
+          summary: `Grundlage: lockere Fahrt mit Kadenz-Zielen`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten, 90–100 U/min` },
-            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1, Kadenz 88–95 U/min, gleichmäßig` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1, Kadenz 88–95 U/min, gleichmäßig` },
             { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
           ],
           zone: 'GA1', zoneLabel: 'Locker',
@@ -1627,10 +1627,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
       },
       advanced: {
         endurance: {
-          summary: `Lange锁ere Fahrt: aerobe Grundlage`,
+          summary: `Lange lockere Fahrt: aerobe Grundlage`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min lockeres Treten` },
-            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1 (60–75 % FTP), Kadenz 88–95 U/min` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1 (60–75 % FTP), Kadenz 88–95 U/min` },
             { label: 'Cool-down', text: `${cooldownMin} min lockeres Ausrollen` },
           ],
           zone: 'GA1', zoneLabel: 'Locker',
@@ -1668,7 +1668,7 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
     run: {
       beginner: {
         endurance: {
-          summary: `Lockere锁ere Laufeinheit mit Lauf-ABC`,
+          summary: `Lockere Laufeinheit mit Lauf-ABC`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min flottes Gehen + 2 × 30 s Ankippen` },
             { label: 'Lauf-ABC', text: `3 × 30 m A-Skips, Kniehebung, kurze Schritte` },
@@ -1708,10 +1708,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
       },
       intermediate: {
         endurance: {
-          summary: `Grundlage:锁ere Fahrt im GA1`,
+          summary: `Grundlage: lockere Fahrt im GA1`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen + 2 × 20 m Ankippen` },
-            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1 (65–75 % HFmax), gleichmäßig` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1 (65–75 % HFmax), gleichmäßig` },
             { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
           ],
           zone: 'GA1', zoneLabel: 'Locker',
@@ -1746,10 +1746,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
       },
       advanced: {
         endurance: {
-          summary: `Lange锁ere Fahrt: aerobe Grundlage`,
+          summary: `Lange lockere Fahrt: aerobe Grundlage`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen` },
-            { label: 'Hauptteil', text: `${mainMin} min锁ere Fahrt im GA1 (65–75 % HFmax), gleichmäßig und entspannt` },
+            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1 (65–75 % HFmax), gleichmäßig und entspannt` },
             { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
           ],
           zone: 'GA1', zoneLabel: 'Locker',
@@ -1863,7 +1863,7 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
       },
       advanced: {
         endurance: {
-          summary: `Kraftausdauer: Ganzkörper-Programm mit progressive Überlastung`,
+          summary: `Kraftausdauer: Ganzkörper-Programm mit progressiver Überlastung`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min Mobilität + 2 × 5 Kniebeugen` },
             { label: 'Hauptteil', text: `3 × 8 Goblet Squat + 3 × 8 Kurzhantel-Rudern + 3 × 10 Romanian Deadlift + 3 × 12 Pallof Press + 3 × 30 s Plank` },
