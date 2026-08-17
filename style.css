@@ -1166,6 +1166,247 @@ input::placeholder {
   color: var(--text);
 }
 
+/* ---------- Week navigation ---------- */
+
+.week-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+.week-nav-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: var(--text-2);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: background 0.15s, color 0.15s;
+}
+
+.week-nav-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
+.week-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.week-nav-label {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+/* ---------- Recovery banner ---------- */
+
+.recovery-banner {
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border-radius: 12px;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  color: var(--accent);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+/* ---------- Today section ---------- */
+
+.today-section {
+  margin-bottom: 18px;
+}
+
+.today-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--border-strong);
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.06) 0%, rgba(167, 139, 250, 0.04) 100%);
+}
+
+.today-card.today-rest {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.today-card.today-rest span {
+  font-size: 0.88rem;
+  color: var(--text-2);
+}
+
+.today-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.today-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.today-greeting {
+  display: block;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+.today-title {
+  display: block;
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.today-meta {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-2);
+}
+
+.today-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 4px;
+  border-left: 2px solid var(--border);
+  margin-left: 4px;
+}
+
+.today-step {
+  font-size: 0.84rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.today-step strong {
+  color: var(--text);
+}
+
+/* ---------- RPE / Feedback ---------- */
+
+.rpe-feedback {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rpe-select,
+.mood-select {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.rpe-submit-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.rpe-submit-btn:hover {
+  background: rgba(34, 211, 238, 0.2);
+}
+
+.rpe-saved {
+  font-size: 0.78rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ---------- Time-squeeze ---------- */
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.card-actions .complete-btn {
+  flex: 1;
+  margin-top: 0;
+}
+
+.squeeze-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.squeeze-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.squeeze-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--border);
+}
+
+.squeeze-label {
+  font-size: 0.78rem;
+  color: var(--text-2);
+}
+
+.squeeze-choice {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.squeeze-choice:hover {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+}
+
 /* ---------- Event timeline / periodization ---------- */
 
 .event-plan-timeline {

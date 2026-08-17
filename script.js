@@ -124,6 +124,8 @@ const trainingDaysInput = document.getElementById('trainingDays');
 const blockedDates = new Set();
 const annualAvailability = {};
 let disciplineFilter = null; // 'swim' | 'bike' | 'run' | 'strength' or null
+let currentWeekIndex = 1;
+const RPE_STORAGE_KEY = 'trifitcoach_rpe';
 
 function minutesToTime(totalMinutes) {
   const safeTotal = Math.max(0, totalMinutes);
@@ -1204,6 +1206,15 @@ function generatePlanFromForm() {
       return { ...session, minutes: scaled, duration: `${scaled} min`, phase, phaseExplanation: explanation };
     });
   }
+
+  const isRecoveryWeek = currentWeekIndex % 4 === 0;
+  if (isRecoveryWeek) {
+    plannedSessions = plannedSessions.map((session) => {
+      const reduced = Math.max(15, Math.round(session.minutes * 0.7));
+      return { ...session, minutes: reduced, duration: `${reduced} min`, isRecovery: true, phaseExplanation: 'Recovery Week – Volumen um 30 % reduziert. Der Fokus liegt auf Regeneration und Technik.' };
+    });
+  }
+
   const sessions = plannedSessions.slice(0, Math.min(config.sessions + 2, plannedSessions.length));
   const totalMinutes = sessions.reduce((sum, session) => sum + session.minutes, 0);
   const totalHours = totalMinutes / 60;
@@ -1242,7 +1253,18 @@ function generatePlanFromForm() {
   focusMatch.textContent = selectedFocus;
   renderDisciplineBreakdown(sessions);
 
-  weekPlanList.innerHTML = (() => {
+  const maxWeeks = weeksUntil || 16;
+  const weekNavHtml = `<div class="week-nav">
+    <button type="button" class="week-nav-btn" data-dir="-1" ${currentWeekIndex <= 1 ? 'disabled' : ''}>◀ Zurück</button>
+    <span class="week-nav-label">Woche ${currentWeekIndex} / ${maxWeeks}${isRecoveryWeek ? ' · 🟢 Recovery' : ''}</span>
+    <button type="button" class="week-nav-btn" data-dir="1" ${currentWeekIndex >= maxWeeks ? 'disabled' : ''}>Weiter ▶</button>
+  </div>`;
+
+  const recoveryBanner = isRecoveryWeek ? '<div class="recovery-banner">🟢 <strong>Recovery Week</strong> – Dieses Wochenplan-Volumen wurde um 30 % reduziert. Fokus: Regeneration & Technik.</div>' : '';
+
+  renderTodaySection(sessions);
+
+  weekPlanList.innerHTML = weekNavHtml + recoveryBanner + (() => {
     const sorted = sessions.sort((a, b) => weekdays.indexOf(a.day) - weekdays.indexOf(b.day));
     const grouped = {};
     sorted.forEach((s) => { (grouped[s.day] = grouped[s.day] || []).push(s); });
@@ -1279,7 +1301,10 @@ function generatePlanFromForm() {
             </div>
             ${session.phaseExplanation ? `<p class="phase-explanation">${session.phaseExplanation}</p>` : ''}
             ${detailHtml}
-            <button type="button" class="complete-btn ${session.completed ? 'done' : ''}" data-session-id="${session.id || ''}" aria-label="Als erledigt markieren">${session.completed ? '✓ Erledigt' : '○ Erledigen'}</button>
+            <div class="card-actions">
+              <button type="button" class="complete-btn ${session.completed ? 'done' : ''}" data-session-id="${session.id || ''}" aria-label="Als erledigt markieren">${session.completed ? '✓ Erledigt' : '○ Erledigen'}</button>
+              ${session.type !== 'rest' ? `<button type="button" class="squeeze-btn" data-minutes="${session.minutes}">⏱ Weniger Zeit?</button>` : ''}
+            </div>
           </article>`;
         }).join('')}
       </div>
@@ -1289,6 +1314,8 @@ function generatePlanFromForm() {
   renderStrengthExercises();
   bindWorkoutDetailToggles();
   bindCompleteButtons();
+  bindSqueezeChoices();
+  bindWeekNav();
   renderProgressChart();
 }
 
@@ -2192,6 +2219,127 @@ function bindCompleteButtons() {
   if (!el || el.dataset.completeBound) return;
   el.dataset.completeBound = '1';
   el.addEventListener('click', handleCompleteToggle);
+  el.addEventListener('click', handleTimeSqueeze);
+  el.addEventListener('click', handleRPESubmit);
+}
+
+/* RPE / Feedback */
+function getRPEData() {
+  try { return JSON.parse(localStorage.getItem(RPE_STORAGE_KEY) || '{}'); } catch (_) { return {}; }
+}
+
+function saveRPEData(sessionId, rpe, mood) {
+  const data = getRPEData();
+  data[sessionId] = { rpe, mood, date: new Date().toISOString() };
+  localStorage.setItem(RPE_STORAGE_KEY, JSON.stringify(data));
+}
+
+function handleRPESubmit(event) {
+  const btn = event.target.closest('.rpe-submit-btn');
+  if (!btn) return;
+  const card = btn.closest('.day-plan-card');
+  if (!card) return;
+  const sessionId = card.querySelector('.complete-btn')?.dataset.sessionId;
+  if (!sessionId) return;
+  const rpeVal = card.querySelector('.rpe-select')?.value;
+  const moodVal = card.querySelector('.mood-select')?.value;
+  if (!rpeVal || !moodVal) return;
+  saveRPEData(sessionId, parseInt(rpeVal, 10), moodVal);
+  const rpeArea = card.querySelector('.rpe-feedback');
+  if (rpeArea) rpeArea.innerHTML = '<span class="rpe-saved">✓ Bewertung gespeichert</span>';
+}
+
+function renderTodaySection(sessions) {
+  const el = document.getElementById('todaySection');
+  if (!el) return;
+  const dayMap = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' };
+  const todayKey = dayMap[new Date().getDay()];
+  const todaySessions = sessions.filter((s) => s.day === todayKey && s.type !== 'rest');
+  if (!todaySessions.length) {
+    el.innerHTML = '<div class="today-card today-rest"><span class="today-icon">💤</span><div><strong>Heute ist Ruhetag.</strong><span>Genieße die Regeneration – morgen geht\'s weiter.</span></div></div>';
+    return;
+  }
+  const s = todaySessions[0];
+  const icon = disciplineIcons[s.type] || '';
+  const detail = s.workoutDetail;
+  const stepsHtml = detail && detail.main ? detail.main.map((step) => `<div class="today-step"><strong>${step.label}:</strong> ${step.text}</div>`).join('') : '';
+  const rpeData = getRPEData();
+  const rpeSaved = rpeData[s.id];
+  const rpeHtml = rpeSaved
+    ? `<span class="rpe-saved">Bewertung: ${rpeSaved.rpe}/10 · ${rpeSaved.mood}</span>`
+    : `<div class="rpe-feedback">
+        <select class="rpe-select"><option value="">RPE?</option><option value="1">1 – Sehr leicht</option><option value="3">3 – Leicht</option><option value="5">5 – Mittel</option><option value="7">7 – Schwer</option><option value="9">9 – Sehr schwer</option><option value="10">10 – Max</option></select>
+        <select class="mood-select"><option value="">Wie fühlst du dich?</option><option value="😃">😃 Sehr gut</option><option value="🙂">🙂 Gut</option><option value="😐">😐 Normal</option><option value="😓">😓 Müde</option><option value="🥵">🥵 Erschöpft</option></select>
+        <button type="button" class="rpe-submit-btn">Speichern</button>
+      </div>`;
+  el.innerHTML = `
+    <div class="today-card ${s.type}">
+      <div class="today-header">
+        <span class="today-icon">${icon}</span>
+        <div>
+          <span class="today-greeting">Heute steht an:</span>
+          <strong class="today-title">${s.label}</strong>
+          <span class="today-meta">${s.duration} · ${s.intensity}</span>
+        </div>
+      </div>
+      ${stepsHtml ? `<div class="today-steps">${stepsHtml}</div>` : ''}
+      ${rpeHtml}
+    </div>`;
+}
+
+/* Time-squeeze mode */
+function handleTimeSqueeze(event) {
+  const btn = event.target.closest('.squeeze-btn');
+  if (!btn) return;
+  const card = btn.closest('.day-plan-card');
+  if (!card) return;
+  const squeezeArea = card.querySelector('.squeeze-options');
+  if (squeezeArea) { squeezeArea.remove(); return; }
+  const currentMin = parseInt(btn.dataset.minutes, 10) || 60;
+  const opts = [15, 30, 45].filter((m) => m < currentMin);
+  const html = `<div class="squeeze-options">
+    <span class="squeeze-label">Nur ${currentMin} min? Kürze:</span>
+    ${opts.map((m) => `<button type="button" class="squeeze-choice" data-minutes="${m}">${m} min</button>`).join('')}
+  </div>`;
+  btn.insertAdjacentHTML('afterend', html);
+}
+
+function applyTimeSqueeze(sessionId, targetMinutes) {
+  const el = document.getElementById('weekPlanList');
+  if (!el) return;
+  const card = el.querySelector(`[data-session-id="${sessionId}"]`)?.closest('.day-plan-card');
+  if (!card) return;
+  const summaryEl = card.querySelector('.session-summary');
+  const pillEl = card.querySelector('.pill');
+  if (summaryEl) summaryEl.textContent = `Gekürzt auf ${targetMinutes} min – Hauptteil reduziert`;
+  if (pillEl) pillEl.textContent = `${pillEl.textContent.split('·')[0].trim()} · ${targetMinutes} min`;
+  const squeezeArea = card.querySelector('.squeeze-options');
+  if (squeezeArea) squeezeArea.innerHTML = '<span class="rpe-saved">✓ Angepasst</span>';
+}
+
+function bindSqueezeChoices() {
+  const el = document.getElementById('weekPlanList');
+  if (!el || el.dataset.squeezeBound) return;
+  el.dataset.squeezeBound = '1';
+  el.addEventListener('click', (e) => {
+    const choice = e.target.closest('.squeeze-choice');
+    if (!choice) return;
+    const card = choice.closest('.day-plan-card');
+    const btn = card?.querySelector('.complete-btn');
+    if (btn) applyTimeSqueeze(btn.dataset.sessionId, parseInt(choice.dataset.minutes, 10));
+  });
+}
+
+function bindWeekNav() {
+  const el = document.getElementById('weekPlanList');
+  if (!el) return;
+  el.querySelectorAll('.week-nav-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const dir = parseInt(btn.dataset.dir, 10);
+      currentWeekIndex = Math.max(1, currentWeekIndex + dir);
+      generatePlanFromForm();
+    });
+  });
 }
 
 function renderDisciplinePie(emphasis) {
