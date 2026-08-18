@@ -379,40 +379,98 @@ function showToast(message, type = 'success') {
 
 function renderAvailabilityOverview() {
   if (!timeTable) return;
-  const map = getAnnualAvailabilityMap();
-  const totalMinutes = Object.values(map).reduce((sum, value) => sum + (value.minutes || 0), 0);
+  const weekDates = getCurrentWeekDateKeys();
+  const slotDefs = [
+    { key: 'morning', label: 'Morgens', start: '06:00', end: '10:00' },
+    { key: 'midday', label: 'Mittags', start: '11:00', end: '14:00' },
+    { key: 'evening', label: 'Abends', start: '17:00', end: '21:00' },
+  ];
 
-  const rows = weekdays.map((day) => {
-    const dayInfo = map[day] || { windows: [], minutes: 0 };
-    const windows = dayInfo.windows || [];
-    const minutes = dayInfo.minutes || 0;
-    const timeText = windows.length
-      ? windows.map((w) => `${w.start}–${w.end}`).join(', ')
-      : 'Keine Zeit';
-    return `
-      <div class="avail-day-row">
-        <span class="avail-day-name">${labels[day]}</span>
-        <span class="avail-day-time ${minutes > 0 ? 'has' : ''}">${timeText}</span>
-        <span class="avail-day-hours ${minutes > 0 ? 'has' : ''}">${minutes > 0 ? formatMinutes(minutes) : '–'}</span>
-      </div>
-    `;
+  const isSlotActive = (dateKey, slotKey) => {
+    const entry = annualAvailability[dateKey];
+    if (!entry || !entry.available || !Array.isArray(entry.windows)) return false;
+    return entry.windows.some((w) => w.start === slotDefs.find((s) => s.key === slotKey).start && w.end === slotDefs.find((s) => s.key === slotKey).end);
+  };
+
+  const toggleSlot = (dateKey, slotKey) => {
+    const slot = slotDefs.find((s) => s.key === slotKey);
+    const entry = annualAvailability[dateKey] || { available: true, windows: [] };
+    if (!entry.windows) entry.windows = [];
+    const idx = entry.windows.findIndex((w) => w.start === slot.start && w.end === slot.end);
+    if (idx > -1) {
+      entry.windows.splice(idx, 1);
+    } else {
+      entry.windows.push({ start: slot.start, end: slot.end });
+    }
+    entry.available = entry.windows.length > 0;
+    if (entry.windows.length) {
+      annualAvailability[dateKey] = entry;
+    } else {
+      delete annualAvailability[dateKey];
+    }
+    persistAvailability();
+    renderAvailabilityOverview();
+    generatePlanFromForm();
+  };
+
+  const dayTotals = weekdays.map((day, i) => {
+    const dateKey = weekDates[i];
+    const entry = annualAvailability[dateKey];
+    if (!entry || !entry.windows || !entry.windows.length) return 0;
+    return entry.windows.reduce((sum, w) => {
+      const s = timeToMinutes(w.start);
+      const e = timeToMinutes(w.end);
+      return sum + (s !== null && e !== null && e > s ? e - s : 0);
+    }, 0);
+  });
+  const totalMinutes = dayTotals.reduce((s, m) => s + m, 0);
+
+  const dayHeaders = weekdays.map((day, i) => `<span class="avail-col-head">${labels[day]}</span>`).join('');
+  const slotRows = slotDefs.map((slot) => {
+    const cells = weekdays.map((day, i) => {
+      const dateKey = weekDates[i];
+      const active = isSlotActive(dateKey, slot.key);
+      return `<button type="button" class="avail-cell ${active ? 'active' : ''}" data-date="${dateKey}" data-slot="${slot.key}" aria-label="${labels[day]} ${slot.label}">${active ? '✓' : ''}</button>`;
+    }).join('');
+    return `<div class="avail-grid-row"><span class="avail-slot-label">${slot.label}</span>${cells}</div>`;
+  }).join('');
+
+  const daySummary = weekdays.map((day, i) => {
+    const mins = dayTotals[i];
+    return `<span class="avail-col-summary">${mins > 0 ? formatMinutes(mins) : '–'}</span>`;
   }).join('');
 
   timeTable.innerHTML = `
-    <div class="avail-week-card">
-      <div class="avail-week-head">
-        <div class="avail-week-summary">
-          <strong>${totalMinutes > 0 ? `${formatMinutes(totalMinutes)} eingeplant` : 'Noch keine Zeit eingetragen'}</strong>
-          <span>${totalMinutes > 0 ? 'Diese Woche hast du folgende Zeitfenster:' : 'Trage pro Tag ein Zeitfenster ein (z. B. 06:30–07:45) – daraus baut der Coach deinen Wochenplan.'}</span>
+    <div class="avail-grid-card">
+      <div class="avail-grid-header">
+        <div class="avail-grid-info">
+          <strong>${totalMinutes > 0 ? `${formatMinutes(totalMinutes)} pro Woche` : 'Wann hast du Zeit?'}</strong>
+          <span>${totalMinutes > 0 ? 'Klicke auf eine Zelle, um Zeitfenster zu togglen.' : 'Klicke auf die Zellen, um deine Trainingszeiten festzulegen.'}</span>
         </div>
         <div class="avail-week-actions">
-          <button type="button" id="editAvailabilityBtn" class="ghost-btn mini-btn">Zeiten bearbeiten</button>
+          <button type="button" id="editAvailabilityBtn" class="ghost-btn mini-btn">Details bearbeiten</button>
           <button type="button" id="resetAvailabilityBtn" class="text-btn" title="Alle gespeicherten Daten löschen">Zurücksetzen</button>
         </div>
       </div>
-      <div class="avail-day-list">${rows}</div>
+      <div class="avail-grid">
+        <div class="avail-grid-row avail-grid-head">
+          <span class="avail-slot-label"></span>
+          ${dayHeaders}
+        </div>
+        ${slotRows}
+        <div class="avail-grid-row avail-grid-totals">
+          <span class="avail-slot-label">Summe</span>
+          ${daySummary}
+        </div>
+      </div>
     </div>
   `;
+
+  timeTable.querySelectorAll('.avail-cell').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      toggleSlot(cell.dataset.date, cell.dataset.slot);
+    });
+  });
 
   const editBtn = document.getElementById('editAvailabilityBtn');
   if (editBtn) editBtn.addEventListener('click', openAnnualModal);
