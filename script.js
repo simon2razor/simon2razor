@@ -36,7 +36,7 @@ const workoutLibrary = {
     { name: 'Trap-Bar Deadlift / Kreuzheben', focus: 'Ganzkörperkraft', benefit: 'Baut schwere Zugkraft und Hüftstärke auf.', sets: '3-4 x 4-6', equipment: 'Trap-Bar/ Langhantel', howto: 'Stell dich in die Trap-Bar, Füße hüftbreit. Beug Knie und Hüfte, greif die Griffe, der Rücken bleibt gerade. Drück dich mit den Beinen nach oben, bis du aufrecht stehst, und lass die Stange kontrolliert wieder ab.' },
     { name: 'Farmer Carry', focus: 'Core & Griff', benefit: 'Verbessert Rumpfstabilität und Haltung unter Last.', sets: '4 x 30-60s', equipment: 'Kurzhanteln', howto: 'Nimm in jede Hand eine Hantel, stell dich aufrecht hin, Schultern zurück. Geh langsam und kontrolliert geradeaus – Rumpf fest, Blick nach vorn, ohne zu wippen.' },
     { name: 'Klimmzüge / Lat Pulldown', focus: 'Oberkörper', benefit: 'Unterstützt Zugkraft im Schwimmen und Haltung.', sets: '3 x 6-8', howto: 'Greif die Stange etwas breiter als schulterbreit, Handrücken von dir weg. Zieh dich hoch, bis das Kinn über der Stange ist, Ellenbogen nach unten. Senk dich langsam ab, bis die Arme fast gestreckt sind. An der Lat-Maschine ziehst du die Stange zur oberen Brust.' },
-    { name: 'Plank Variationen (Shoulder Taps)', focus: 'Core', benefit: 'Verbessert Rumpfstabilität und Kraftübertragung.', sets: '3 x 30s', howto: 'Stütz dich im Unterarm- oder Liegestütz, der Körper bildet eine gerade Linie. Heb eine Hand kurz ab und tippe die gegenüberliegende Schulter an, dann wechsle die Seite – ohne dass der Rumpf wippt.' },
+    { name: 'Plank-Variationen (Shoulder Taps)', focus: 'Core', benefit: 'Verbessert Rumpfstabilität und Kraftübertragung.', sets: '3 x 30s', howto: 'Stütz dich im Unterarm- oder Liegestütz, der Körper bildet eine gerade Linie. Heb eine Hand kurz ab und tippe die gegenüberliegende Schulter an, dann wechsle die Seite – ohne dass der Rumpf wippt.' },
     { name: 'Hip Thrust', focus: 'Hüftstrecker', benefit: 'Erhöht Explosivkraft und Stabilität beim Rad/Lauf.', sets: '3 x 8-10', howto: 'Leg den oberen Rücken auf eine Bank, Füße hüftbreit auf den Boden, Knie im rechten Winkel. Drück die Hüfte kräftig nach oben, bis der Körper eine gerade Linie bildet. Press das Gesäß oben an und senk die Hüfte kontrolliert ab.' },
     { name: 'Goblet Squat', focus: 'Bein-Kraft & Kniekontrolle', benefit: 'Baut Beinkraft auf und schützt die Knie durch kontrollierte Bewegung.', sets: '3 x 8-12', equipment: 'Kurzhantel oder Kettlebell', howto: 'Halt die Hantel mit beiden Händen vor der Brust, die Ellenbogen zeigen nach unten. Stell dich schulterbreit hin, schieb das Gesäß nach hinten und geh tief in die Kniebeuge, bis die Oberschenkel mindestens parallel zum Boden sind. Drück dich über die Fersen wieder hoch und halt den Rumpf dabei fest – das Knie bleibt über den Zehen. Die tiefe Position stärkt Hüfte und Sprunggelenk mit, die du für die Aero-Haltung und einen kräftigen Lauf brauchst.' },
     { name: 'Pallof Press', focus: 'Rumpf-Antirotation', benefit: 'Stabilisiert den Rumpf und hält die Aero-Position über lange Einheiten.', sets: '3 x 8-12/Seite', equipment: 'Widerstandsband oder Kabelzug', howto: 'Befestige das Band in Brusthöhe und dreh dich seitlich zur Aufhängung. Halt das Band mit beiden Händen vor der Brust, streck die Arme gerade nach vorn und lass dich vom Band nicht zur Seite drehen – Rumpf bleibt ruhig und aufrecht. Zieh die Arme langsam wieder zur Brust und wiederhole. Das trainiert die Rumpfsteifigkeit, die im Windschatten-Sitz dein Becken stabil hält und die Kraft ins Pedal bringt.' },
@@ -514,7 +514,7 @@ function renderAvailabilityOverview() {
       </div>
 
       <div class="avail-panel" data-panel="sports">
-        <p class="avail-panel-hint">Wähle pro Tag, welche Sportarten möglich sind. Deaktiverte Sportarten werden im Plan nicht eingeplant.</p>
+        <p class="avail-panel-hint">Wähle pro Tag, welche Sportarten möglich sind. Deaktivierte Sportarten werden im Plan nicht eingeplant.</p>
         <div class="sport-list">${sportRows}</div>
       </div>
 
@@ -817,14 +817,14 @@ const phaseExplanations = {
   Build: {
     swim: 'Die Intensität steigt. Du arbeitest an deinem Schwimm-Pacing und baust Schwelle und Kraft im Wasser auf.',
     bike: 'Sweet-Spot- und Threshold-Einheiten bringen deine Radleistung auf Wettkampfniveau.',
-    run: 'Tempo- und Schwelleinheiten verbessern dein Lauftempo und deine aerobe Kapazität.',
+    run: 'Tempo- und Schwelleneinheiten verbessern dein Lauftempo und deine aerobe Kapazität.',
     strength: 'Die Kraft wird sportartspezifisch weiterentwickelt – Explosivkraft und Belastbarkeit stehen im Vordergrund.',
     default: 'Die Intensität steigt. Du bringst deine Leistung auf Wettkampfniveau.',
   },
   Peak: {
     swim: 'Du simulierst Wettkampfbedingungen. Pacing, Tempo-Wechsel und mentale Härte werden trainiert.',
     bike: 'Rennnahe Einheiten mit hoher Intensität, aber reduziertem Volumen. Du polierst deine Form.',
-    run: 'Rennahe Tempoeinheiten. Du fühlst dich scharf und bereit, das Volumen sinkt leicht.',
+    run: 'Rennnahe Tempoeinheiten. Du fühlst dich scharf und bereit, das Volumen sinkt leicht.',
     strength: 'Leichtes, knackiges Krafttraining hält die Form, ohne Ermüdung aufzubauen.',
     default: 'Du bist in Topform. Das Volumen sinkt leicht, die Intensität bleibt hoch.',
   },
@@ -1465,7 +1465,7 @@ function generatePlanFromForm() {
   if (isRecoveryWeek) {
     plannedSessions = plannedSessions.map((session) => {
       const reduced = Math.max(15, Math.round(session.minutes * 0.7));
-      return { ...session, minutes: reduced, duration: `${reduced} min`, isRecovery: true, phaseExplanation: 'Recovery Week – Volumen um 30 % reduziert. Der Fokus liegt auf Regeneration und Technik.' };
+      return { ...session, minutes: reduced, duration: `${reduced} min`, isRecovery: true, phaseExplanation: 'Regenerationswoche – Volumen um 30 % reduziert. Der Fokus liegt auf Regeneration und Technik.' };
     });
   }
 
@@ -1510,11 +1510,11 @@ function generatePlanFromForm() {
   const maxWeeks = weeksUntil || 16;
   const weekNavHtml = `<div class="week-nav">
     <button type="button" class="week-nav-btn" data-dir="-1" ${currentWeekIndex <= 1 ? 'disabled' : ''}>◀ Zurück</button>
-    <span class="week-nav-label">Woche ${currentWeekIndex} / ${maxWeeks}${isRecoveryWeek ? ' · 🟢 Recovery' : ''}</span>
+    <span class="week-nav-label">Woche ${currentWeekIndex} / ${maxWeeks}${isRecoveryWeek ? ' · 🟢 Regeneration' : ''}</span>
     <button type="button" class="week-nav-btn" data-dir="1" ${currentWeekIndex >= maxWeeks ? 'disabled' : ''}>Weiter ▶</button>
   </div>`;
 
-  const recoveryBanner = isRecoveryWeek ? '<div class="recovery-banner">🟢 <strong>Recovery Week</strong> – Dieses Wochenplan-Volumen wurde um 30 % reduziert. Fokus: Regeneration & Technik.</div>' : '';
+  const recoveryBanner = isRecoveryWeek ? '<div class="recovery-banner">🟢 <strong>Regenerationswoche</strong> – Dieses Wochenplan-Volumen wurde um 30 % reduziert. Fokus: Regeneration & Technik.</div>' : '';
 
   renderTodaySection(sessions);
 
@@ -1536,7 +1536,7 @@ function generatePlanFromForm() {
                 ${session.workoutDetail.main.map((step) => `<div class="workout-step"><strong>${step.label}:</strong> ${step.text}</div>`).join('')}
                 ${zonesHtml}
               </div>
-              <span class="workout-detail-toggle"><span class="workout-detail-label">Workout Details</span><span class="ex-howto-chevron"></span></span>
+              <span class="workout-detail-toggle"><span class="workout-detail-label">Trainingseinheit-Details</span><span class="ex-howto-chevron"></span></span>
             </div>` : '';
           return `
           <article class="day-plan-card ${session.type}">
@@ -1589,7 +1589,7 @@ function renderStrengthExercises() {
   Object.keys(workoutLibrary).forEach((cat, index) => {
     const items = workoutLibrary[cat];
     const title = categoryTitles[cat] || cat.charAt(0).toUpperCase() + cat.slice(1);
-    const expanded = index === 0;
+    const expanded = false;
     const html = items
       .map((ex) => `
         <article class="exercise-card">
@@ -1667,7 +1667,7 @@ function handleWorkoutDetailToggle(event) {
   const isOpen = box.classList.toggle('open');
   box.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   const label = box.querySelector('.workout-detail-label');
-  if (label) label.textContent = isOpen ? 'Workout verbergen' : 'Workout Details';
+  if (label) label.textContent = isOpen ? 'Trainingseinheit verbergen' : 'Trainingseinheit-Details';
 }
 
 // Bind workout detail toggles (delegated on weekPlanList)
@@ -1990,10 +1990,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
       },
       intermediate: {
         endurance: {
-          summary: `Grundlage: lockere Fahrt im GA1`,
+          summary: `Grundlage: lockeres Laufen im GA1`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen + 2 × 20 m Ankippen` },
-            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1 (65–75 % HFmax), gleichmäßig` },
+            { label: 'Hauptteil', text: `${mainMin} min lockeres Laufen im GA1 (65–75 % HFmax), gleichmäßig` },
             { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
           ],
           zone: 'GA1', zoneLabel: 'Locker',
@@ -2028,10 +2028,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
       },
       advanced: {
         endurance: {
-          summary: `Lange lockere Fahrt: aerobe Grundlage`,
+          summary: `Langer lockerer Lauf: aerobe Grundlage`,
           main: [
             { label: 'Aufwärmen', text: `${warmupMin} min lockeres Laufen` },
-            { label: 'Hauptteil', text: `${mainMin} min lockere Fahrt im GA1 (65–75 % HFmax), gleichmäßig und entspannt` },
+            { label: 'Hauptteil', text: `${mainMin} min lockeres Laufen im GA1 (65–75 % HFmax), gleichmäßig und entspannt` },
             { label: 'Cool-down', text: `${cooldownMin} min lockeres Auslaufen` },
           ],
           zone: 'GA1', zoneLabel: 'Locker',
