@@ -1143,7 +1143,6 @@ function loadDemoPlan() {
   document.getElementById('goal').value = 'olympic';
   document.getElementById('experience').value = 'intermediate';
   document.getElementById('focus').value = 'endurance';
-  document.getElementById('athleteName').value = 'Mia';
 
   renderAvailabilityOverview();
   generatePlanFromForm();
@@ -2078,17 +2077,7 @@ plannerForm.addEventListener('submit', (event) => {
   const hasAvailability = Object.values(getAnnualAvailabilityMap()).some((day) => (day.minutes || 0) > 0);
   const hasEventDate = Boolean(formData.get('eventDate'));
 
-  // Validate required fields
-  const nameInput = document.getElementById('athleteName');
-  const nameLabel = nameInput?.closest('label');
   let valid = true;
-
-  if (nameLabel && (!formData.get('athleteName') || !formData.get('athleteName').trim())) {
-    nameLabel.classList.add('has-error');
-    valid = false;
-  } else if (nameLabel) {
-    nameLabel.classList.remove('has-error');
-  }
 
   if (!hasAvailability && !hasEventDate) {
     showToast('Trage zuerst ein Zeitfenster im Jahreskalender ein – daraus baut der Coach deinen Plan.', 'error');
@@ -2154,6 +2143,49 @@ if (!hasAnySavedData) {
 } else {
   generatePlanFromForm();
 }
+
+/* Wizard */
+let currentWizardStep = 0;
+const wizardPages = document.querySelectorAll('.wizard-page');
+const wizardSteps = document.querySelectorAll('.wizard-step');
+const wizardFill = document.getElementById('wizardFill');
+
+function updateWizard() {
+  wizardPages.forEach((page, i) => {
+    page.classList.toggle('active', i === currentWizardStep);
+  });
+  wizardSteps.forEach((step, i) => {
+    step.classList.remove('active', 'done');
+    if (i === currentWizardStep) step.classList.add('active');
+    else if (i < currentWizardStep) step.classList.add('done');
+  });
+  if (wizardFill) wizardFill.style.width = `${((currentWizardStep + 1) / wizardPages.length) * 100}%`;
+}
+
+document.querySelectorAll('.wizard-next-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const dir = parseInt(btn.dataset.dir, 10) || 1;
+    currentWizardStep = Math.max(0, Math.min(wizardPages.length - 1, currentWizardStep + dir));
+    updateWizard();
+  });
+});
+
+document.querySelectorAll('.wizard-prev-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const dir = parseInt(btn.dataset.dir, 10) || -1;
+    currentWizardStep = Math.max(0, Math.min(wizardPages.length - 1, currentWizardStep + dir));
+    updateWizard();
+  });
+});
+
+const heroCtaBtn = document.getElementById('heroCtaBtn');
+if (heroCtaBtn) {
+  heroCtaBtn.addEventListener('click', () => {
+    document.getElementById('formPanel')?.scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
+updateWizard();
 
 // Charts and draggable FABs
 const pieChartEl = document.getElementById('pieChart');

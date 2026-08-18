@@ -52,7 +52,26 @@
 
     <div class="page-shell">
       <main class="app-layout">
-        <section class="panel form-panel">
+        <section class="hero-section" id="heroSection">
+          <div class="hero-content">
+            <h2 class="hero-title">Dein persönlicher Triathlon-Trainingsplan</h2>
+            <p class="hero-subtitle">Erstelle in wenigen Minuten einen Trainingsplan, abgestimmt auf dein Ziel, dein Leistungsniveau und deine verfügbare Zeit.</p>
+            <div class="hero-disciplines">
+              <span class="hero-disc">🏊 Schwimmen</span>
+              <span class="hero-disc">🚴 Rad</span>
+              <span class="hero-disc">🏃 Laufen</span>
+              <span class="hero-disc">💪 Kraft</span>
+            </div>
+            <button type="button" class="primary-btn hero-cta" id="heroCtaBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"></path>
+              </svg>
+              Plan erstellen
+            </button>
+          </div>
+        </section>
+
+        <section class="panel form-panel" id="formPanel">
           <div class="panel-header">
             <div>
               <p class="section-tag">Athlet-Profil</p>
@@ -66,8 +85,20 @@
             </div>
           </div>
 
+          <div class="wizard-progress" id="wizardProgress">
+            <div class="wizard-bar">
+              <div class="wizard-fill" id="wizardFill"></div>
+            </div>
+            <div class="wizard-steps">
+              <span class="wizard-step active" data-step="0">Ziel</span>
+              <span class="wizard-step" data-step="1">Niveau</span>
+              <span class="wizard-step" data-step="2">Verfügbarkeit</span>
+              <span class="wizard-step" data-step="3">Plan</span>
+            </div>
+          </div>
+
           <form id="plannerForm" class="planner-form">
-            <fieldset class="form-section">
+            <fieldset class="form-section wizard-page active" data-wizard="0">
               <div class="section-heading">
                 <span class="step-badge">1</span>
                 <div>
@@ -78,9 +109,8 @@
 
               <div class="field-grid">
                 <label>
-                  <span>Name</span>
-                  <input id="athleteName" name="athleteName" type="text" value="Mia" placeholder="Dein Name" required />
-                  <span class="field-error">Bitte gib deinen Namen ein.</span>
+                  <span>Name <span class="optional-tag">(optional)</span></span>
+                  <input id="athleteName" name="athleteName" type="text" value="" placeholder="Dein Name" />
                 </label>
 
                 <label>
@@ -94,7 +124,7 @@
                 </label>
 
                 <label>
-                  <span>Wettkampf</span>
+                  <span>Wettkampf <span class="optional-tag">(optional)</span></span>
                   <input id="eventName" name="eventName" type="text" placeholder="z. B. Heimrennen" />
                 </label>
 
@@ -113,9 +143,14 @@
                   </select>
                 </label>
               </div>
+
+              <div class="wizard-nav">
+                <span></span>
+                <button type="button" class="wizard-next-btn" data-dir="1">Weiter: Niveau →</button>
+              </div>
             </fieldset>
 
-            <fieldset class="form-section">
+            <fieldset class="form-section wizard-page" data-wizard="1">
               <div class="section-heading">
                 <span class="step-badge">2</span>
                 <div>
@@ -176,9 +211,32 @@
                   <input id="trainingDays" name="trainingDays" type="number" min="1" max="7" value="5" />
                 </label>
               </div>
+
+              <div class="wizard-nav">
+                <button type="button" class="wizard-prev-btn" data-dir="-1">← Zurück</button>
+                <button type="button" class="wizard-next-btn" data-dir="1">Weiter: Verfügbarkeit →</button>
+              </div>
             </fieldset>
 
-            <fieldset class="optional-fields" id="performanceFieldset">
+            <div class="wizard-page" data-wizard="2">
+              <div class="availability-box">
+                <div class="availability-header">
+                  <div>
+                    <p class="section-tag">Verfügbarkeit</p>
+                    <h3>Wann hast du Zeit?</h3>
+                  </div>
+                  <span id="availabilitySummary" class="summary-pill">0 h</span>
+                </div>
+                <div id="timeTable" class="time-table"></div>
+              </div>
+
+              <div class="wizard-nav">
+                <button type="button" class="wizard-prev-btn" data-dir="-1">← Zurück</button>
+                <button type="button" class="wizard-next-btn" data-dir="1">Weiter: Leistungsdaten →</button>
+              </div>
+            </div>
+
+            <fieldset class="optional-fields wizard-page" id="performanceFieldset" data-wizard="3">
               <legend>Leistungsdaten <span class="optional-tag">(optional – verbessert die Planung)</span></legend>
               <div class="form-grid-3">
                 <label>
@@ -186,7 +244,7 @@
                   <input id="swimTime" name="swimTime" type="text" placeholder="z. B. 8:30" autocomplete="off" />
                 </label>
                 <label>
-                  <span>FTP (Watt)</span>
+                  <span>FTP (Watt) <span class="info-tooltip" title="Functional Threshold Power – deine maximale Dauerleistung über ca. 1 Stunde. Feld leer lassen, wenn unbekannt.">ⓘ</span></span>
                   <input id="ftpWatts" name="ftpWatts" type="number" min="50" max="500" placeholder="z. B. 220" />
                 </label>
                 <label>
@@ -202,25 +260,17 @@
                   <input id="restHR" name="restHR" type="number" min="35" max="100" placeholder="z. B. 55" />
                 </label>
               </div>
-            </fieldset>
 
-            <div class="availability-box">
-              <div class="availability-header">
-                <div>
-                  <p class="section-tag">Verfügbarkeit</p>
-                  <h3>Wann hast du Zeit?</h3>
-                </div>
-                <span id="availabilitySummary" class="summary-pill">0 h</span>
+              <div class="wizard-nav">
+                <button type="button" class="wizard-prev-btn" data-dir="-1">← Zurück</button>
+                <button class="primary-btn" type="submit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"></path>
+                  </svg>
+                  Plan generieren
+                </button>
               </div>
-              <div id="timeTable" class="time-table"></div>
-            </div>
-
-            <button class="primary-btn" type="submit">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M12 2l2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2z"></path>
-              </svg>
-              Persönlichen Plan generieren
-            </button>
+            </fieldset>
           </form>
         </section>
 
