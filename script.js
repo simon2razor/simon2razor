@@ -126,6 +126,41 @@ const annualAvailability = {};
 let disciplineFilter = null; // 'swim' | 'bike' | 'run' | 'strength' or null
 let currentWeekIndex = 1;
 const RPE_STORAGE_KEY = 'trifitcoach_rpe';
+const SPORT_RESTRICTIONS_KEY = 'trifit_sport_restrictions';
+const BLOCKED_PERIODS_KEY = 'trifit_blocked_periods';
+const AVAIL_MODE_KEY = 'trifit_avail_mode';
+
+const sportRestrictions = {};   // { "2026-08-18": { swim: true, bike: false, run: true, strength: true } }
+const blockedPeriods = [];       // [{ start: "2026-08-20", end: "2026-08-25", sports: ["swim","bike"] }]
+let availMode = 'grid';          // 'simple' | 'grid'
+
+function loadSportRestrictions() {
+  try { const d = JSON.parse(localStorage.getItem(SPORT_RESTRICTIONS_KEY) || '{}'); Object.assign(sportRestrictions, d); } catch (_) {}
+}
+function persistSportRestrictions() {
+  try { localStorage.setItem(SPORT_RESTRICTIONS_KEY, JSON.stringify(sportRestrictions)); } catch (_) {}
+}
+function loadBlockedPeriods() {
+  try { const d = JSON.parse(localStorage.getItem(BLOCKED_PERIODS_KEY) || '[]'); blockedPeriods.length = 0; d.forEach((p) => blockedPeriods.push(p)); } catch (_) {}
+}
+function persistBlockedPeriods() {
+  try { localStorage.setItem(BLOCKED_PERIODS_KEY, JSON.stringify(blockedPeriods)); } catch (_) {}
+}
+function loadAvailMode() {
+  try { availMode = localStorage.getItem(AVAIL_MODE_KEY) || 'grid'; } catch (_) { availMode = 'grid'; }
+}
+function persistAvailMode() {
+  try { localStorage.setItem(AVAIL_MODE_KEY, availMode); } catch (_) {}
+}
+
+function isSportAllowed(dateKey, sportType) {
+  const entry = sportRestrictions[dateKey];
+  if (entry && typeof entry[sportType] === 'boolean') return entry[sportType];
+  for (const period of blockedPeriods) {
+    if (dateKey >= period.start && dateKey <= period.end && period.sports.includes(sportType)) return false;
+  }
+  return true;
+}
 
 function minutesToTime(totalMinutes) {
   const safeTotal = Math.max(0, totalMinutes);
@@ -380,41 +415,8 @@ function showToast(message, type = 'success') {
 function renderAvailabilityOverview() {
   if (!timeTable) return;
   const weekDates = getCurrentWeekDateKeys();
-  const slotDefs = [
-    { key: 'morning', label: 'Morgens', start: '06:00', end: '10:00' },
-    { key: 'midday', label: 'Mittags', start: '11:00', end: '14:00' },
-    { key: 'evening', label: 'Abends', start: '17:00', end: '21:00' },
-  ];
 
-  const isSlotActive = (dateKey, slotKey) => {
-    const entry = annualAvailability[dateKey];
-    if (!entry || !entry.available || !Array.isArray(entry.windows)) return false;
-    return entry.windows.some((w) => w.start === slotDefs.find((s) => s.key === slotKey).start && w.end === slotDefs.find((s) => s.key === slotKey).end);
-  };
-
-  const toggleSlot = (dateKey, slotKey) => {
-    const slot = slotDefs.find((s) => s.key === slotKey);
-    const entry = annualAvailability[dateKey] || { available: true, windows: [] };
-    if (!entry.windows) entry.windows = [];
-    const idx = entry.windows.findIndex((w) => w.start === slot.start && w.end === slot.end);
-    if (idx > -1) {
-      entry.windows.splice(idx, 1);
-    } else {
-      entry.windows.push({ start: slot.start, end: slot.end });
-    }
-    entry.available = entry.windows.length > 0;
-    if (entry.windows.length) {
-      annualAvailability[dateKey] = entry;
-    } else {
-      delete annualAvailability[dateKey];
-    }
-    persistAvailability();
-    renderAvailabilityOverview();
-    generatePlanFromForm();
-  };
-
-  const dayTotals = weekdays.map((day, i) => {
-    const dateKey = weekDates[i];
+  const calcDayMinutes = (dateKey) => {
     const entry = annualAvailability[dateKey];
     if (!entry || !entry.windows || !entry.windows.length) return 0;
     return entry.windows.reduce((sum, w) => {
@@ -422,58 +424,243 @@ function renderAvailabilityOverview() {
       const e = timeToMinutes(w.end);
       return sum + (s !== null && e !== null && e > s ? e - s : 0);
     }, 0);
-  });
-  const totalMinutes = dayTotals.reduce((s, m) => s + m, 0);
+  };
+  const totalMinutes = weekDates.reduce((sum, dk) => sum + calcDayMinutes(dk), 0);
 
-  const dayHeaders = weekdays.map((day, i) => `<span class="avail-col-head">${labels[day]}</span>`).join('');
-  const slotRows = slotDefs.map((slot) => {
-    const cells = weekdays.map((day, i) => {
-      const dateKey = weekDates[i];
-      const active = isSlotActive(dateKey, slot.key);
-      return `<button type="button" class="avail-cell ${active ? 'active' : ''}" data-date="${dateKey}" data-slot="${slot.key}" aria-label="${labels[day]} ${slot.label}">${active ? '✓' : ''}</button>`;
-    }).join('');
-    return `<div class="avail-grid-row"><span class="avail-slot-label">${slot.label}</span>${cells}</div>`;
+  /* --- Simple mode rows --- */
+  const simpleRows = weekdays.map((day, i) => {
+    const dateKey = weekDates[i];
+    const entry = annualAvailability[dateKey] || { available: false, windows: [] };
+    const windows = (entry.windows || []).map((w) => ({ ...w }));
+    const minutes = calcDayMinutes(dateKey);
+    const windowInputs = windows.length
+      ? windows.map((w, wi) => `<div class="avail-window-row"><input type="time" class="avail-time-input" data-date="${dateKey}" data-wi="${wi}" data-slot="start" value="${w.start}" /><span class="avail-time-sep">bis</span><input type="time" class="avail-time-input" data-date="${dateKey}" data-wi="${wi}" data-slot="end" value="${w.end}" /><button type="button" class="avail-window-remove" data-date="${dateKey}" data-wi="${wi}" aria-label="Entfernen">✕</button></div>`).join('')
+      : '<span class="avail-empty-hint">Keine Zeit</span>';
+    return `<div class="avail-day-row"><div class="avail-day-head"><span class="avail-day-name">${labels[day]}</span><span class="avail-day-hours ${minutes > 0 ? 'has' : ''}">${minutes > 0 ? formatMinutes(minutes) : ''}</span></div><div class="avail-day-windows">${windowInputs}</div><button type="button" class="avail-window-add" data-date="${dateKey}">+ Zeitfenster</button></div>`;
   }).join('');
 
-  const daySummary = weekdays.map((day, i) => {
-    const mins = dayTotals[i];
-    return `<span class="avail-col-summary">${mins > 0 ? formatMinutes(mins) : '–'}</span>`;
+  /* --- Grid mode: 30-min blocks 05:00–22:00 --- */
+  const gridStart = 300; const gridEnd = 1320; const step = 30;
+  const timeLabels = [];
+  for (let m = gridStart; m < gridEnd; m += step) timeLabels.push(minutesToTime(m));
+
+  const isGridActive = (dateKey, startMin) => {
+    const entry = annualAvailability[dateKey];
+    if (!entry || !entry.windows || !entry.windows.length) return false;
+    return entry.windows.some((w) => {
+      const ws = timeToMinutes(w.start);
+      const we = timeToMinutes(w.end);
+      return ws !== null && we !== null && startMin >= ws && startMin < we;
+    });
+  };
+
+  const gridHead = weekdays.map((d, i) => `<span class="avail-col-head">${labels[d].slice(0, 2)}</span>`).join('');
+  const gridRows = timeLabels.map((label, ti) => {
+    const startMin = gridStart + ti * step;
+    const cells = weekdays.map((day, di) => {
+      const dk = weekDates[di];
+      const active = isGridActive(dk, startMin);
+      return `<button type="button" class="avail-cell ${active ? 'active' : ''}" data-date="${dk}" data-min="${startMin}" aria-label="${labels[day]} ${label}"></button>`;
+    }).join('');
+    return `<div class="avail-grid-row"><span class="avail-grid-time">${label}</span>${cells}</div>`;
+  }).join('');
+
+  /* --- Sport restrictions per day --- */
+  const sportTypes = ['swim', 'bike', 'run', 'strength'];
+  const sportLabels = { swim: '🏊', bike: '🚴', run: '🏃', strength: '💪' };
+  const sportRows = weekdays.map((day, i) => {
+    const dk = weekDates[i];
+    const checks = sportTypes.map((st) => {
+      const allowed = isSportAllowed(dk, st);
+      return `<label class="sport-check"><input type="checkbox" data-date="${dk}" data-sport="${st}" ${allowed ? 'checked' : ''} /><span>${sportLabels[st]}</span></label>`;
+    }).join('');
+    return `<div class="sport-row"><span class="sport-day-name">${labels[day]}</span><div class="sport-checks">${checks}</div></div>`;
+  }).join('');
+
+  /* --- Blocked periods --- */
+  const periodRows = blockedPeriods.map((p, pi) => {
+    const sportTags = p.sports.map((s) => `<span class="blocked-tag">${sportLabels[s] || s}</span>`).join('');
+    return `<div class="blocked-period-row"><span class="blocked-dates">${p.start} – ${p.end}</span><div class="blocked-tags">${sportTags}</div><button type="button" class="blocked-remove" data-pi="${pi}">✕</button></div>`;
   }).join('');
 
   timeTable.innerHTML = `
-    <div class="avail-grid-card">
-      <div class="avail-grid-header">
-        <div class="avail-grid-info">
+    <div class="avail-tabs">
+      <button type="button" class="avail-tab ${availMode === 'simple' ? 'active' : ''}" data-mode="simple">Einfach</button>
+      <button type="button" class="avail-tab ${availMode === 'grid' ? 'active' : ''}" data-mode="grid">Grid</button>
+      <button type="button" class="avail-tab" data-mode="sports">Sportarten</button>
+      <button type="button" class="avail-tab" data-mode="vacation">Urlaub</button>
+    </div>
+
+    <div class="avail-week-card">
+      <div class="avail-week-head">
+        <div class="avail-week-summary">
           <strong>${totalMinutes > 0 ? `${formatMinutes(totalMinutes)} pro Woche` : 'Wann hast du Zeit?'}</strong>
-          <span>${totalMinutes > 0 ? 'Klicke auf eine Zelle, um Zeitfenster zu togglen.' : 'Klicke auf die Zellen, um deine Trainingszeiten festzulegen.'}</span>
+          <span>${totalMinutes > 0 ? 'Passe die Zeiten an – der Plan aktualisiert sich automatisch.' : 'Wähle ein Modell und trage deine Zeitfenster ein.'}</span>
         </div>
         <div class="avail-week-actions">
-          <button type="button" id="editAvailabilityBtn" class="ghost-btn mini-btn">Details bearbeiten</button>
           <button type="button" id="resetAvailabilityBtn" class="text-btn" title="Alle gespeicherten Daten löschen">Zurücksetzen</button>
         </div>
       </div>
-      <div class="avail-grid">
-        <div class="avail-grid-row avail-grid-head">
-          <span class="avail-slot-label"></span>
-          ${dayHeaders}
-        </div>
-        ${slotRows}
-        <div class="avail-grid-row avail-grid-totals">
-          <span class="avail-slot-label">Summe</span>
-          ${daySummary}
+
+      <div class="avail-panel ${availMode === 'simple' ? 'active' : ''}" data-panel="simple">
+        <div class="avail-day-list">${simpleRows}</div>
+      </div>
+
+      <div class="avail-panel ${availMode === 'grid' ? 'active' : ''}" data-panel="grid">
+        <div class="avail-grid">
+          <div class="avail-grid-row avail-grid-head"><span class="avail-grid-time"></span>${gridHead}</div>
+          ${gridRows}
         </div>
       </div>
-    </div>
-  `;
 
-  timeTable.querySelectorAll('.avail-cell').forEach((cell) => {
-    cell.addEventListener('click', () => {
-      toggleSlot(cell.dataset.date, cell.dataset.slot);
+      <div class="avail-panel" data-panel="sports">
+        <p class="avail-panel-hint">Wähle pro Tag, welche Sportarten möglich sind. Deaktiverte Sportarten werden im Plan nicht eingeplant.</p>
+        <div class="sport-list">${sportRows}</div>
+      </div>
+
+      <div class="avail-panel" data-panel="vacation">
+        <p class="avail-panel-hint">Markiere Zeiträume, in denen bestimmte Sportarten nicht möglich sind (z. B. kein Schwimmbad im Urlaub).</p>
+        <div class="blocked-list">${periodRows || '<span class="avail-empty-hint">Keine blockierten Zeiträume</span>'}</div>
+        <div class="blocked-add-row">
+          <input type="date" id="blockedStart" class="avail-date-input" />
+          <span class="avail-time-sep">bis</span>
+          <input type="date" id="blockedEnd" class="avail-date-input" />
+          <select id="blockedSport" class="avail-select">
+            <option value="swim">🏊 Schwimmen</option>
+            <option value="bike">🚴 Rad</option>
+            <option value="run">🏃 Laufen</option>
+            <option value="strength">💪 Kraft</option>
+          </select>
+          <button type="button" id="addBlockedBtn" class="avail-window-add">+ Blockieren</button>
+        </div>
+      </div>
+    </div>`;
+
+  /* --- Event bindings --- */
+
+  /* Tab switching */
+  timeTable.querySelectorAll('.avail-tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      const mode = tab.dataset.mode;
+      if (mode === 'simple' || mode === 'grid') {
+        availMode = mode;
+        persistAvailMode();
+      }
+      timeTable.querySelectorAll('.avail-tab').forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      timeTable.querySelectorAll('.avail-panel').forEach((p) => p.classList.remove('active'));
+      timeTable.querySelector(`[data-panel="${mode}"]`)?.classList.add('active');
     });
   });
 
-  const editBtn = document.getElementById('editAvailabilityBtn');
-  if (editBtn) editBtn.addEventListener('click', openAnnualModal);
+  /* Simple mode: time inputs */
+  timeTable.querySelectorAll('.avail-time-input').forEach((input) => {
+    input.addEventListener('change', () => {
+      const { date, wi, slot } = input.dataset;
+      const entry = annualAvailability[date] || { available: true, windows: [] };
+      if (!entry.windows) entry.windows = [];
+      if (entry.windows[wi]) entry.windows[wi][slot] = input.value;
+      entry.available = entry.windows.some((w) => w.start && w.end);
+      if (entry.windows.length) annualAvailability[date] = entry;
+      else delete annualAvailability[date];
+      persistAvailability();
+      renderAvailabilityOverview();
+      generatePlanFromForm();
+    });
+  });
+  timeTable.querySelectorAll('.avail-window-remove').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const { date, wi } = btn.dataset;
+      const entry = annualAvailability[date];
+      if (entry && entry.windows) {
+        entry.windows.splice(parseInt(wi, 10), 1);
+        entry.available = entry.windows.length > 0;
+        if (entry.windows.length) annualAvailability[date] = entry;
+        else delete annualAvailability[date];
+      }
+      persistAvailability();
+      renderAvailabilityOverview();
+      generatePlanFromForm();
+    });
+  });
+  timeTable.querySelectorAll('.avail-window-add').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const date = btn.dataset.date;
+      const entry = annualAvailability[date] || { available: true, windows: [] };
+      if (!entry.windows) entry.windows = [];
+      entry.windows.push({ start: '06:00', end: '07:00' });
+      entry.available = true;
+      annualAvailability[date] = entry;
+      persistAvailability();
+      renderAvailabilityOverview();
+      generatePlanFromForm();
+    });
+  });
+
+  /* Grid mode: toggle cells */
+  timeTable.querySelectorAll('.avail-cell').forEach((cell) => {
+    cell.addEventListener('click', () => {
+      const dk = cell.dataset.date;
+      const min = parseInt(cell.dataset.min, 10);
+      const entry = annualAvailability[dk] || { available: true, windows: [] };
+      if (!entry.windows) entry.windows = [];
+      const segEnd = min + step;
+      const idx = entry.windows.findIndex((w) => timeToMinutes(w.start) === min && timeToMinutes(w.end) === segEnd);
+      if (idx > -1) {
+        entry.windows.splice(idx, 1);
+      } else {
+        /* Merge adjacent: extend existing window or create new */
+        let merged = false;
+        for (const w of entry.windows) {
+          if (timeToMinutes(w.end) === min) { w.end = minutesToTime(segEnd); merged = true; break; }
+          if (timeToMinutes(w.start) === segEnd) { w.start = minutesToTime(min); merged = true; break; }
+        }
+        if (!merged) entry.windows.push({ start: minutesToTime(min), end: minutesToTime(segEnd) });
+      }
+      entry.available = entry.windows.length > 0;
+      if (entry.windows.length) annualAvailability[dk] = entry;
+      else delete annualAvailability[dk];
+      persistAvailability();
+      renderAvailabilityOverview();
+      generatePlanFromForm();
+    });
+  });
+
+  /* Sport restrictions */
+  timeTable.querySelectorAll('.sport-check input[type="checkbox"]').forEach((cb) => {
+    cb.addEventListener('change', () => {
+      const dk = cb.dataset.date;
+      const sport = cb.dataset.sport;
+      if (!sportRestrictions[dk]) sportRestrictions[dk] = { swim: true, bike: true, run: true, strength: true };
+      sportRestrictions[dk][sport] = cb.checked;
+      persistSportRestrictions();
+      generatePlanFromForm();
+    });
+  });
+
+  /* Blocked periods */
+  const addBlockedBtn = document.getElementById('addBlockedBtn');
+  if (addBlockedBtn) {
+    addBlockedBtn.addEventListener('click', () => {
+      const s = document.getElementById('blockedStart')?.value;
+      const e = document.getElementById('blockedEnd')?.value;
+      const sport = document.getElementById('blockedSport')?.value;
+      if (!s || !e || !sport) return;
+      blockedPeriods.push({ start: s, end: e, sports: [sport] });
+      persistBlockedPeriods();
+      renderAvailabilityOverview();
+      generatePlanFromForm();
+    });
+  }
+  timeTable.querySelectorAll('.blocked-remove').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      blockedPeriods.splice(parseInt(btn.dataset.pi, 10), 1);
+      persistBlockedPeriods();
+      renderAvailabilityOverview();
+      generatePlanFromForm();
+    });
+  });
+
   const resetBtn = document.getElementById('resetAvailabilityBtn');
   if (resetBtn) resetBtn.addEventListener('click', showConfirmModal);
 
@@ -1152,10 +1339,12 @@ function loadDemoPlan() {
 function buildWeeklyPlan(availableDays, availability, blockedMap, experience, focus, config, performanceData) {
   const pattern = getWeeklyExercisePattern();
   const schedule = [];
+  const weekDates = getCurrentWeekDateKeys();
 
   weekdays.forEach((day, dayIndex) => {
     const dayAvailability = availability[day];
     const freeSegments = getFreeSegments(dayAvailability);
+    const dateKey = weekDates[dayIndex];
 
     if (!freeSegments.length) {
       schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Regeneration und Mobilität', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0 });
@@ -1170,7 +1359,15 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
       let cursor = segment.start;
 
       for (let sessionIndex = 0; sessionIndex < maxSessions && cursor + baseDuration <= segment.end; sessionIndex += 1) {
-        const type = pattern[(dayIndex + sessionCounter + sessionIndex) % pattern.length];
+        let type = pattern[(dayIndex + sessionCounter + sessionIndex) % pattern.length];
+        if (!isSportAllowed(dateKey, type)) {
+          const fallback = pattern.find((t) => isSportAllowed(dateKey, t));
+          type = fallback || 'rest';
+        }
+        if (type === 'rest') {
+          schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Keine passende Sportart verfügbar', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0 });
+          break;
+        }
         const sessionMinutes = Math.min(baseDuration, segment.end - cursor);
         const startTime = minutesToTime(cursor);
         const endTime = minutesToTime(cursor + sessionMinutes);
@@ -2131,6 +2328,9 @@ document.querySelectorAll('#swimLevel,#bikeLevel,#runLevel,#trainingDays').forEa
 
 loadFormState();
 loadAvailability();
+loadSportRestrictions();
+loadBlockedPeriods();
+loadAvailMode();
 const hasAnySavedData = Object.keys(annualAvailability).length > 0 || localStorage.getItem(FORM_STORAGE_KEY) !== null;
 renderAnnualOverview();
 updateAvailabilitySummary();
