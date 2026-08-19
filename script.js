@@ -131,7 +131,7 @@ const BLOCKED_PERIODS_KEY = 'trifit_blocked_periods';
 const AVAIL_MODE_KEY = 'trifit_avail_mode';
 
 const sportRestrictions = {};   // { "2026-08-18": { swim: true, bike: false, run: true, strength: true } }
-const blockedPeriods = [];       // [{ start: "2026-08-20", end: "2026-08-25", sports: ["swim","bike"] }]
+const blockedPeriods = [];       // [{ start: "2026-08-20", end: "2026-08-25", sports: ["swim","bike"], note: "Urlaub am See" }]
 let availMode = 'grid';          // 'simple' | 'grid'
 
 function loadSportRestrictions() {
@@ -480,7 +480,9 @@ function renderAvailabilityOverview() {
   /* --- Blocked periods --- */
   const periodRows = blockedPeriods.map((p, pi) => {
     const sportTags = p.sports.map((s) => `<span class="blocked-tag">${sportEmoji[s] || s}</span>`).join('');
-    return `<div class="blocked-period-row"><span class="blocked-dates">${p.start} – ${p.end}</span><div class="blocked-tags">${sportTags}</div><button type="button" class="blocked-remove" data-pi="${pi}">✕</button></div>`;
+    const noteHtml = p.note ? `<span class="blocked-note-text">${p.note}</span>` : '';
+    const daysCount = (() => { try { const s = new Date(p.start + 'T00:00:00'); const e = new Date(p.end + 'T00:00:00'); return Math.round((e - s) / 86400000) + 1; } catch (_) { return '?'; } })();
+    return `<div class="blocked-period-row"><div class="blocked-period-info"><span class="blocked-dates">${p.start} – ${p.end} <small>(${daysCount} Tage)</small></span>${noteHtml}</div><div class="blocked-tags">${sportTags}</div><button type="button" class="blocked-remove" data-pi="${pi}">✕</button></div>`;
   }).join('');
 
   timeTable.innerHTML = `
@@ -519,7 +521,14 @@ function renderAvailabilityOverview() {
       </div>
 
       <div class="avail-panel" data-panel="vacation">
-        <p class="avail-panel-hint">Markiere Zeiträume, in denen bestimmte Sportarten nicht möglich sind (z. B. kein Schwimmbad im Urlaub).</p>
+        <p class="avail-panel-hint">Markiere Zeiträume, in denen bestimmte Sportarten nicht möglich sind (z.B. kein Schwimmbad im Urlaub). Der Plan ersetzt blockierte Einheiten automatisch durch alternative Sportarten.</p>
+        <div class="vacation-presets">
+          <span class="vacation-preset-label">Schnellauswahl:</span>
+          <button type="button" class="vacation-preset-btn" data-preset="all">🏊🚴🏃💪 Alles blockiert</button>
+          <button type="button" class="vacation-preset-btn" data-preset="noswim">🏊 Kein Schwimmen</button>
+          <button type="button" class="vacation-preset-btn" data-preset="norun">🏃 Kein Laufen</button>
+          <button type="button" class="vacation-preset-btn" data-preset="nogym">💪 Kein Kraftstudio</button>
+        </div>
         <div class="blocked-list">${periodRows || '<span class="avail-empty-hint">Keine blockierten Zeiträume</span>'}</div>
         <div class="blocked-add-row">
           <input type="date" id="blockedStart" class="avail-date-input" />
@@ -531,6 +540,7 @@ function renderAvailabilityOverview() {
             <label class="sport-check"><input type="checkbox" id="blockRun" value="run" checked /><span>🏃</span></label>
             <label class="sport-check"><input type="checkbox" id="blockStrength" value="strength" checked /><span>💪</span></label>
           </div>
+          <input type="text" id="blockedNote" class="avail-note-input" placeholder="Notiz (z.B. 'Urlaub am See')" maxlength="80" />
           <button type="button" id="addBlockedBtn" class="avail-window-add">+ Blockieren</button>
         </div>
       </div>
@@ -654,18 +664,52 @@ function renderAvailabilityOverview() {
     addBlockedBtn.addEventListener('click', () => {
       const s = document.getElementById('blockedStart')?.value;
       const e = document.getElementById('blockedEnd')?.value;
+      const note = (document.getElementById('blockedNote')?.value || '').trim();
       const sports = [];
       if (document.getElementById('blockSwim')?.checked) sports.push('swim');
       if (document.getElementById('blockBike')?.checked) sports.push('bike');
       if (document.getElementById('blockRun')?.checked) sports.push('run');
       if (document.getElementById('blockStrength')?.checked) sports.push('strength');
       if (!s || !e || !sports.length) return;
-      blockedPeriods.push({ start: s, end: e, sports });
+      blockedPeriods.push({ start: s, end: e, sports, note });
       persistBlockedPeriods();
       renderAvailabilityOverview();
       generatePlanFromForm();
+      showToast(`Blockierungszeitraum hinzugefügt: ${sports.map((sp) => sportEmoji[sp] || sp).join('')}${note ? ' (' + note + ')' : ''}`);
     });
   }
+
+  /* Vacation presets */
+  timeTable.querySelectorAll('.vacation-preset-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const preset = btn.dataset.preset;
+      const swimCb = document.getElementById('blockSwim');
+      const bikeCb = document.getElementById('blockBike');
+      const runCb = document.getElementById('blockRun');
+      const strengthCb = document.getElementById('blockStrength');
+      if (preset === 'all') {
+        if (swimCb) swimCb.checked = true;
+        if (bikeCb) bikeCb.checked = true;
+        if (runCb) runCb.checked = true;
+        if (strengthCb) strengthCb.checked = true;
+      } else if (preset === 'noswim') {
+        if (swimCb) swimCb.checked = true;
+        if (bikeCb) bikeCb.checked = false;
+        if (runCb) runCb.checked = false;
+        if (strengthCb) strengthCb.checked = false;
+      } else if (preset === 'norun') {
+        if (swimCb) swimCb.checked = false;
+        if (bikeCb) bikeCb.checked = false;
+        if (runCb) runCb.checked = true;
+        if (strengthCb) strengthCb.checked = false;
+      } else if (preset === 'nogym') {
+        if (swimCb) swimCb.checked = false;
+        if (bikeCb) bikeCb.checked = false;
+        if (runCb) runCb.checked = false;
+        if (strengthCb) strengthCb.checked = true;
+      }
+    });
+  });
   timeTable.querySelectorAll('.blocked-remove').forEach((btn) => {
     btn.addEventListener('click', () => {
       blockedPeriods.splice(parseInt(btn.dataset.pi, 10), 1);
@@ -1357,10 +1401,14 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
 
   function getBlockedSportsForDate(dk) {
     const blocked = [];
+    const notes = [];
     for (const period of blockedPeriods) {
-      if (dk >= period.start && dk <= period.end) blocked.push(...period.sports);
+      if (dk >= period.start && dk <= period.end) {
+        blocked.push(...period.sports);
+        if (period.note) notes.push(period.note);
+      }
     }
-    return [...new Set(blocked)];
+    return { sports: [...new Set(blocked)], notes: [...new Set(notes)] };
   }
 
   const sportLabelsLocal = { swim: '🏊 Schwimmen', bike: '🚴 Rad', run: '🏃 Laufen', strength: '💪 Kraft' };
@@ -1369,7 +1417,9 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
     const dayAvailability = availability[day];
     const freeSegments = getFreeSegments(dayAvailability);
     const dateKey = weekDates[dayIndex];
-    const blockedSports = getBlockedSportsForDate(dateKey);
+    const blockedInfo2 = getBlockedSportsForDate(dateKey);
+    const blockedSports = blockedInfo2.sports;
+    const blockedNotes = blockedInfo2.notes;
 
     if (!freeSegments.length) {
       schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Regeneration und Mobilität', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0, dateKey, blockedSports: [] });
@@ -1395,7 +1445,7 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
         if (type === 'rest') {
           schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Keine passende Sportart verfügbar', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0, dateKey, blockedSports, replacedBy: null, originalType });
           if (blockedSports.length) {
-            blockedInfo.push({ dateKey, day, original: originalType, reason: blockedSports.map((s) => sportLabelsLocal[s] || s).join(', ') + ' blockiert' });
+            blockedInfo.push({ dateKey, day, original: originalType, reason: blockedSports.map((s) => sportLabelsLocal[s] || s).join(', ') + ' blockiert', note: blockedNotes.join(', ') || null });
           }
           break;
         }
@@ -1408,8 +1458,9 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
         if (replaced) {
           session.replacedBy = type;
           session.originalType = originalType;
-          session.blockedNote = `⚠️ ${sportLabelsLocal[originalType] || originalType} blockiert → ${sportLabelsLocal[type] || type} als Alternative`;
-          blockedInfo.push({ dateKey, day, original: originalType, replacedBy: type, reason: blockedSports.map((s) => sportLabelsLocal[s] || s).join(', ') + ' blockiert' });
+          const noteText = blockedNotes.length ? ` (${blockedNotes.join(', ')})` : '';
+          session.blockedNote = `⚠️ ${sportLabelsLocal[originalType] || originalType} blockiert → ${sportLabelsLocal[type] || type} als Alternative${noteText}`;
+          blockedInfo.push({ dateKey, day, original: originalType, replacedBy: type, reason: blockedSports.map((s) => sportLabelsLocal[s] || s).join(', ') + ' blockiert', note: blockedNotes.join(', ') || null });
         }
         schedule.push(session);
         cursor += sessionMinutes;
@@ -1553,6 +1604,7 @@ function generatePlanFromForm() {
     <button type="button" class="week-nav-btn" data-dir="-1" ${currentWeekIndex <= 1 ? 'disabled' : ''}>◀ Zurück</button>
     <span class="week-nav-label">Woche ${currentWeekIndex} / ${maxWeeks}${isRecoveryWeek ? ' · 🟢 Regeneration' : ''}</span>
     <button type="button" class="week-nav-btn" data-dir="1" ${currentWeekIndex >= maxWeeks ? 'disabled' : ''}>Weiter ▶</button>
+    <button type="button" class="week-recalc-btn" id="recalcBtn" title="Plan neu berechnen nach Änderungen">🔄 Plan anpassen</button>
   </div>`;
 
   const recoveryBanner = isRecoveryWeek ? '<div class="recovery-banner">🟢 <strong>Regenerationswoche</strong> – Dieses Wochenplan-Volumen wurde um 30 % reduziert. Fokus: Regeneration & Technik.</div>' : '';
@@ -1564,7 +1616,7 @@ function generatePlanFromForm() {
     const grouped = {};
     sorted.forEach((s) => { (grouped[s.day] = grouped[s.day] || []).push(s); });
     const blockedInfo = sessions._blockedInfo || [];
-    const blockedBanner = blockedInfo.length ? `<div class="blocked-info-banner"><strong>Urlaubs-Modus aktiv:</strong> ${blockedInfo.map((b) => `${labels[b.day] || b.day}: ${b.original ? (sportLabelsFull[b.original] || b.original) : ''} blockiert${b.replacedBy ? ` → ${sportLabelsFull[b.replacedBy] || b.replacedBy}` : ''}`).join(' · ')}</div>` : '';
+    const blockedBanner = blockedInfo.length ? `<div class="blocked-info-banner"><strong>Urlaubs-Modus aktiv:</strong> ${blockedInfo.map((b) => `${labels[b.day] || b.day}: ${b.original ? (sportLabelsFull[b.original] || b.original) : ''} blockiert${b.replacedBy ? ` → ${sportLabelsFull[b.replacedBy] || b.replacedBy}` : ''}${b.note ? ` (${b.note})` : ''}`).join(' · ')}</div>` : '';
     return blockedBanner + Object.keys(grouped).map((day) => {
       const dayHasBlockedSports = grouped[day].some((s) => s.blockedSports && s.blockedSports.length > 0);
       return `
@@ -1599,6 +1651,7 @@ function generatePlanFromForm() {
             <div class="session-meta">
               <span>${session.intensity}</span>
             </div>
+            ${session.durationNote ? `<p class="duration-note">${session.durationNote}</p>` : ''}
             ${blockedNoteHtml}
             ${session.phaseExplanation ? `<p class="phase-explanation">${session.phaseExplanation}</p>` : ''}
             ${detailHtml}
@@ -1744,6 +1797,7 @@ function buildSession(type, day, sessionMinutes, startTime, endTime, experience,
     summary: detail.summary,
     description: detail.summary,
     workoutDetail: detail,
+    durationNote: detail.durationNote || null,
   };
 }
 
@@ -1753,6 +1807,19 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
   const warmupMin = Math.round(Math.min(10, Math.max(5, minutes * 0.12)));
   const cooldownMin = Math.round(Math.min(10, Math.max(5, minutes * 0.1)));
   const mainMin = Math.max(10, minutes - warmupMin - cooldownMin);
+
+  // Smart focus: adapt training type to available duration
+  let adaptedFocus = focus;
+  if (minutes < 40) {
+    // Very short: always technique/strength
+    adaptedFocus = (type === 'strength') ? 'technique' : 'technique';
+  } else if (minutes < 55 && focus === 'endurance') {
+    // Short window + endurance planned → switch to technique/tempo
+    adaptedFocus = 'technique';
+  } else if (minutes >= 90 && focus === 'technique') {
+    // Long window + technique planned → add endurance component
+    adaptedFocus = 'endurance';
+  }
 
   const templates = {
     swim: {
@@ -2231,10 +2298,10 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
     },
   };
 
-  // Select template based on focus; fall back to endurance
+  // Select template based on adapted focus (duration-aware); fall back to endurance
   const disciplineTemplates = templates[type] || templates.run;
   const experienceTemplates = disciplineTemplates[experience] || disciplineTemplates.intermediate || disciplineTemplates.beginner;
-  const selected = experienceTemplates[focus] || experienceTemplates.endurance;
+  const selected = experienceTemplates[adaptedFocus] || experienceTemplates.endurance;
 
   // Scale intervals based on available time
   if (minutes < 40) {
@@ -2247,6 +2314,11 @@ function generateWorkoutDetail(type, experience, focus, minutes, performanceData
 
   // Enrich with performance-based zone references
   selected.zones = [];
+  selected.adaptedFocus = adaptedFocus;
+  selected.originalFocus = focus;
+  if (adaptedFocus !== focus) {
+    selected.durationNote = `⏱ Angepasst: ${minutes} min → ${adaptedFocus === 'technique' ? 'Technik/Tempo statt Ausdauer' : 'Ausdauer statt Technik (lang genug)'}`;
+  }
   if (pd.maxHR) {
     const hrRest = pd.restHR || 55;
     const hrReserve = pd.maxHR - hrRest;
@@ -2529,7 +2601,8 @@ function renderProgressChart() {
   const completed = getCompletedSessions();
   const weekKeys = Object.keys(completed).sort().slice(-8);
   if (!weekKeys.length) {
-    el.innerHTML = '<div class="empty-state">Noch keine Fortschritte. Klicke „Erledigen" bei einer Einheit.</div>';
+    el.innerHTML = '<div class="empty-state">Noch keine Fortschritte. Klicke "Erledigen" bei einer Einheit.</div>';
+    renderGamification();
     return;
   }
   const maxCount = Math.max(1, ...weekKeys.map((k) => (completed[k] || []).length));
@@ -2542,6 +2615,144 @@ function renderProgressChart() {
       <span class="progress-week">${wk.replace('-', ' ')}</span>
     </div>`;
   }).join('')}</div>`;
+  renderGamification();
+}
+
+/* ---------- Gamification ---------- */
+const GAMIFICATION_MILESTONES = [
+  { id: 'first_session', label: 'Erste Einheit geschafft!', icon: '🎯', check: (stats) => stats.totalSessions >= 1 },
+  { id: 'first_week', label: 'Erste Woche abgeschlossen!', icon: '📅', check: (stats) => stats.completedWeeks >= 1 },
+  { id: 'streak_2', label: '2 Wochen in Serie!', icon: '🔥', check: (stats) => stats.currentStreak >= 2 },
+  { id: 'streak_4', label: '4 Wochen Disziplin!', icon: '💪', check: (stats) => stats.currentStreak >= 4 },
+  { id: 'streak_8', label: '8 Wochen ununterbrochen!', icon: '🏆', check: (stats) => stats.currentStreak >= 8 },
+  { id: 'sessions_10', label: '10 Einheiten erreicht!', icon: '⭐', check: (stats) => stats.totalSessions >= 10 },
+  { id: 'sessions_25', label: '25 Einheiten – hallo Durchhaltevermögen!', icon: '🌟', check: (stats) => stats.totalSessions >= 25 },
+  { id: 'sessions_50', label: '50 Einheiten – Du bist ein Maschine!', icon: '🚀', check: (stats) => stats.totalSessions >= 50 },
+  { id: 'hours_20', label: '20 Stunden Training!', icon: '⏱', check: (stats) => stats.totalHours >= 20 },
+  { id: 'hours_50', label: '50 Stunden – ein halbes Marathon-Training!', icon: '🏅', check: (stats) => stats.totalHours >= 50 },
+];
+
+function getGamificationStats() {
+  const completed = getCompletedSessions();
+  const allWeekKeys = Object.keys(completed).sort();
+  const totalSessions = allWeekKeys.reduce((sum, wk) => sum + (completed[wk] || []).length, 0);
+  const completedWeeks = allWeekKeys.filter((wk) => (completed[wk] || []).length > 0).length;
+
+  // Calculate streaks
+  let currentStreak = 0;
+  let longestStreak = 0;
+  let tempStreak = 0;
+  const today = new Date();
+  // Walk backwards from current week
+  for (let w = 0; w < 52; w++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - w * 7);
+    const wk = getWeekKey(d);
+    if (completed[wk] && completed[wk].length > 0) {
+      if (w === currentStreak || (w > 0 && tempStreak === w - 1)) {
+        currentStreak++;
+        tempStreak = currentStreak;
+      } else if (tempStreak === 0) {
+        currentStreak++;
+        tempStreak = currentStreak;
+      }
+    } else if (w === 0) {
+      // Current week might not have any yet — check previous
+      continue;
+    } else {
+      break;
+    }
+  }
+  // Simpler streak calculation: walk backwards until gap
+  currentStreak = 0;
+  for (let w = 0; w < 52; w++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - w * 7);
+    const wk = getWeekKey(d);
+    if (completed[wk] && completed[wk].length > 0) {
+      currentStreak++;
+    } else {
+      if (w > 0) break;
+    }
+  }
+  longestStreak = currentStreak;
+  // Check all weeks for longest
+  tempStreak = 0;
+  for (let w = 51; w >= 0; w--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - w * 7);
+    const wk = getWeekKey(d);
+    if (completed[wk] && completed[wk].length > 0) {
+      tempStreak++;
+      if (tempStreak > longestStreak) longestStreak = tempStreak;
+    } else {
+      tempStreak = 0;
+    }
+  }
+
+  // Estimate hours from session durations
+  const totalHours = allWeekKeys.reduce((sum, wk) => {
+    return sum + (completed[wk] || []).reduce((s, sid) => {
+      const match = sid.match(/(\d+)$/);
+      return s + 0;
+    }, 0);
+  }, 0);
+
+  return { totalSessions, completedWeeks, currentStreak, longestStreak, totalHours: Math.round(totalSessions * 0.85) };
+}
+
+function renderGamification() {
+  const el = document.getElementById('gamificationContent');
+  if (!el) return;
+  const stats = getGamificationStats();
+
+  if (stats.totalSessions === 0) {
+    el.innerHTML = '<div class="empty-state">Starte dein erstes Training und sammle Erfolge!</div>';
+    return;
+  }
+
+  const earned = GAMIFICATION_MILESTONES.filter((m) => m.check(stats));
+  const nextMilestone = GAMIFICATION_MILESTONES.find((m) => !m.check(stats));
+
+  const statsHtml = `
+    <div class="gamification-stats">
+      <div class="gam-stat">
+        <span class="gam-stat-value">🔥 ${stats.currentStreak}</span>
+        <span class="gam-stat-label">Wochen-Serie</span>
+      </div>
+      <div class="gam-stat">
+        <span class="gam-stat-value">🏆 ${stats.longestStreak}</span>
+        <span class="gam-stat-label">Rekord</span>
+      </div>
+      <div class="gam-stat">
+        <span class="gam-stat-value">✅ ${stats.totalSessions}</span>
+        <span class="gam-stat-label">Einheiten</span>
+      </div>
+      <div class="gam-stat">
+        <span class="gam-stat-value">⏱ ~${stats.totalHours}h</span>
+        <span class="gam-stat-label">Gesamt</span>
+      </div>
+    </div>
+  `;
+
+  const badgesHtml = earned.length ? `
+    <div class="gam-badges">
+      ${earned.map((m) => `<span class="gam-badge" title="${m.label}">${m.icon}</span>`).join('')}
+    </div>
+  ` : '';
+
+  const nextHtml = nextMilestone ? `
+    <div class="gam-next">
+      <span class="gam-next-label">Nächstes Ziel:</span>
+      <span>${nextMilestone.icon} ${nextMilestone.label}</span>
+    </div>
+  ` : `
+    <div class="gam-next gam-complete">
+      <span>🎉 Alle Meilensteine erreicht! Du bist ein Triathlon-Phänomen!</span>
+    </div>
+  `;
+
+  el.innerHTML = statsHtml + badgesHtml + nextHtml;
 }
 
 function bindCompleteButtons() {
@@ -2670,6 +2881,16 @@ function bindWeekNav() {
       generatePlanFromForm();
     });
   });
+  const recalcBtn = document.getElementById('recalcBtn');
+  if (recalcBtn) {
+    recalcBtn.addEventListener('click', () => {
+      showToast('Plan wird neu berechnet...');
+      setTimeout(() => {
+        generatePlanFromForm();
+        showToast('Plan aktualisiert! Passe bei Bedarf deine Zeitfenster an.');
+      }, 300);
+    });
+  }
 }
 
 function renderDisciplinePie(emphasis) {
