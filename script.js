@@ -525,12 +525,12 @@ function renderAvailabilityOverview() {
           <input type="date" id="blockedStart" class="avail-date-input" />
           <span class="avail-time-sep">bis</span>
           <input type="date" id="blockedEnd" class="avail-date-input" />
-          <select id="blockedSport" class="avail-select">
-            <option value="swim">🏊 Schwimmen</option>
-            <option value="bike">🚴 Rad</option>
-            <option value="run">🏃 Laufen</option>
-            <option value="strength">💪 Kraft</option>
-          </select>
+          <div class="blocked-sport-checks">
+            <label class="sport-check"><input type="checkbox" id="blockSwim" value="swim" checked /><span>🏊</span></label>
+            <label class="sport-check"><input type="checkbox" id="blockBike" value="bike" checked /><span>🚴</span></label>
+            <label class="sport-check"><input type="checkbox" id="blockRun" value="run" checked /><span>🏃</span></label>
+            <label class="sport-check"><input type="checkbox" id="blockStrength" value="strength" checked /><span>💪</span></label>
+          </div>
           <button type="button" id="addBlockedBtn" class="avail-window-add">+ Blockieren</button>
         </div>
       </div>
@@ -644,9 +644,13 @@ function renderAvailabilityOverview() {
     addBlockedBtn.addEventListener('click', () => {
       const s = document.getElementById('blockedStart')?.value;
       const e = document.getElementById('blockedEnd')?.value;
-      const sport = document.getElementById('blockedSport')?.value;
-      if (!s || !e || !sport) return;
-      blockedPeriods.push({ start: s, end: e, sports: [sport] });
+      const sports = [];
+      if (document.getElementById('blockSwim')?.checked) sports.push('swim');
+      if (document.getElementById('blockBike')?.checked) sports.push('bike');
+      if (document.getElementById('blockRun')?.checked) sports.push('run');
+      if (document.getElementById('blockStrength')?.checked) sports.push('strength');
+      if (!s || !e || !sports.length) return;
+      blockedPeriods.push({ start: s, end: e, sports });
       persistBlockedPeriods();
       renderAvailabilityOverview();
       generatePlanFromForm();
@@ -881,7 +885,7 @@ function buildPlanUntilEvent(eventDateString, goal, experience, focus, config) {
     let weekSessions = [];
     if (totalMinutes >= 60) {
       const availableDays = weekdays.filter((d) => availability[d].minutes > 0);
-      weekSessions = buildWeeklyPlan(availableDays, availability, {}, experience, focus, config);
+      weekSessions = buildWeeklyPlan(availableDays, availability, {}, experience, focus, config, undefined, weekKeys);
       // filter rest sessions
       weekSessions = weekSessions.filter((s) => s.type !== 'rest');
       // scale by phase
@@ -1336,10 +1340,10 @@ function loadDemoPlan() {
   persistAvailability();
 }
 
-function buildWeeklyPlan(availableDays, availability, blockedMap, experience, focus, config, performanceData) {
+function buildWeeklyPlan(availableDays, availability, blockedMap, experience, focus, config, performanceData, overrideWeekDates) {
   const pattern = getWeeklyExercisePattern();
   const schedule = [];
-  const weekDates = getCurrentWeekDateKeys();
+  const weekDates = overrideWeekDates || getCurrentWeekDateKeys();
 
   weekdays.forEach((day, dayIndex) => {
     const dayAvailability = availability[day];
