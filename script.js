@@ -1344,14 +1344,26 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
   const pattern = getWeeklyExercisePattern();
   const schedule = [];
   const weekDates = overrideWeekDates || getCurrentWeekDateKeys();
+  const blockedInfo = [];
+
+  function getBlockedSportsForDate(dk) {
+    const blocked = [];
+    for (const period of blockedPeriods) {
+      if (dk >= period.start && dk <= period.end) blocked.push(...period.sports);
+    }
+    return [...new Set(blocked)];
+  }
+
+  const sportLabels = { swim: '🏊 Schwimmen', bike: '🚴 Rad', run: '🏃 Laufen', strength: '💪 Kraft' };
 
   weekdays.forEach((day, dayIndex) => {
     const dayAvailability = availability[day];
     const freeSegments = getFreeSegments(dayAvailability);
     const dateKey = weekDates[dayIndex];
+    const blockedSports = getBlockedSportsForDate(dateKey);
 
     if (!freeSegments.length) {
-      schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Regeneration und Mobilität', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0 });
+      schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Regeneration und Mobilität', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0, dateKey, blockedSports: [] });
       return;
     }
 
@@ -1364,24 +1376,40 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
 
       for (let sessionIndex = 0; sessionIndex < maxSessions && cursor + baseDuration <= segment.end; sessionIndex += 1) {
         let type = pattern[(dayIndex + sessionCounter + sessionIndex) % pattern.length];
+        let replaced = false;
+        let originalType = type;
         if (!isSportAllowed(dateKey, type)) {
           const fallback = pattern.find((t) => isSportAllowed(dateKey, t));
           type = fallback || 'rest';
+          replaced = (type !== originalType);
         }
         if (type === 'rest') {
-          schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Keine passende Sportart verfügbar', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0 });
+          schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Keine passende Sportart verfügbar', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0, dateKey, blockedSports, replacedBy: null, originalType });
+          if (blockedSports.length) {
+            blockedInfo.push({ dateKey, day, original: originalType, reason: blockedSports.map((s) => sportLabels[s] || s).join(', ') + ' blockiert' });
+          }
           break;
         }
         const sessionMinutes = Math.min(baseDuration, segment.end - cursor);
         const startTime = minutesToTime(cursor);
         const endTime = minutesToTime(cursor + sessionMinutes);
-        schedule.push(buildSession(type, day, sessionMinutes, startTime, endTime, experience, focus, config, performanceData));
+        const session = buildSession(type, day, sessionMinutes, startTime, endTime, experience, focus, config, performanceData);
+        session.dateKey = dateKey;
+        session.blockedSports = blockedSports;
+        if (replaced) {
+          session.replacedBy = type;
+          session.originalType = originalType;
+          session.blockedNote = `⚠️ ${sportLabels[originalType] || originalType} blockiert → ${sportLabels[type] || type} als Alternative`;
+          blockedInfo.push({ dateKey, day, original: originalType, replacedBy: type, reason: blockedSports.map((s) => sportLabels[s] || s).join(', ') + ' blockiert' });
+        }
+        schedule.push(session);
         cursor += sessionMinutes;
         sessionCounter += 1;
       }
     });
   });
 
+  schedule._blockedInfo = blockedInfo;
   return schedule;
 }
 
@@ -1526,9 +1554,13 @@ function generatePlanFromForm() {
     const sorted = sessions.sort((a, b) => weekdays.indexOf(a.day) - weekdays.indexOf(b.day));
     const grouped = {};
     sorted.forEach((s) => { (grouped[s.day] = grouped[s.day] || []).push(s); });
-    return Object.keys(grouped).map((day) => `
-      <div class="day-group">
-        <h4 class="day-group-header">${labels[day] || day}</h4>
+    const blockedInfo = sessions._blockedInfo || [];
+    const blockedBanner = blockedInfo.length ? `<div class="blocked-info-banner"><strong>Urlaubs-Modus aktiv:</strong> ${blockedInfo.map((b) => `${labels[b.day] || b.day}: ${b.original ? (sportLabels[b.original] || b.original) : ''} blockiert${b.replacedBy ? ` → ${sportLabels[b.replacedBy] || b.replacedBy}` : ''}`).join(' · ')}</div>` : '';
+    return blockedBanner + Object.keys(grouped).map((day) => {
+      const dayHasBlockedSports = grouped[day].some((s) => s.blockedSports && s.blockedSports.length > 0);
+      return `
+      <div class="day-group ${dayHasBlockedSports ? 'has-blocked' : ''}">
+        <h4 class="day-group-header">${labels[day] || day}${dayHasBlockedSports ? ' <span class="blocked-badge">⚠ Urlaub</span>' : ''}</h4>
         ${grouped[day].map((session, si) => {
           const uid = `session-${session.day}-${si}`;
           const hasDetail = session.workoutDetail && session.workoutDetail.main;
@@ -1542,8 +1574,9 @@ function generatePlanFromForm() {
               </div>
               <span class="workout-detail-toggle"><span class="workout-detail-label">Trainingseinheit-Details</span><span class="ex-howto-chevron"></span></span>
             </div>` : '';
+          const blockedNoteHtml = session.blockedNote ? `<p class="blocked-note">${session.blockedNote}</p>` : '';
           return `
-          <article class="day-plan-card ${session.type}">
+          <article class="day-plan-card ${session.type} ${session.replacedBy ? 'sport-replaced' : ''}">
             <header>
               <div class="card-title-row">
                 <span class="disc-icon ${session.type}">${disciplineIcons[session.type] || ''}</span>
@@ -1557,6 +1590,7 @@ function generatePlanFromForm() {
             <div class="session-meta">
               <span>${session.intensity}</span>
             </div>
+            ${blockedNoteHtml}
             ${session.phaseExplanation ? `<p class="phase-explanation">${session.phaseExplanation}</p>` : ''}
             ${detailHtml}
             <div class="card-actions">
@@ -1565,8 +1599,8 @@ function generatePlanFromForm() {
             </div>
           </article>`;
         }).join('')}
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   })();
 
   renderStrengthExercises();
