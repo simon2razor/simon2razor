@@ -605,11 +605,21 @@ function renderAvailabilityOverview() {
       const entry = annualAvailability[dk] || { available: true, windows: [] };
       if (!entry.windows) entry.windows = [];
       const segEnd = min + step;
-      const idx = entry.windows.findIndex((w) => timeToMinutes(w.start) === min && timeToMinutes(w.end) === segEnd);
+      const idx = entry.windows.findIndex((w) => min >= timeToMinutes(w.start) && segEnd <= timeToMinutes(w.end));
       if (idx > -1) {
-        entry.windows.splice(idx, 1);
+        const w = entry.windows[idx];
+        const wStart = timeToMinutes(w.start);
+        const wEnd = timeToMinutes(w.end);
+        if (wStart === min && wEnd === segEnd) {
+          entry.windows.splice(idx, 1);
+        } else if (wStart === min) {
+          w.start = minutesToTime(segEnd);
+        } else if (wEnd === segEnd) {
+          w.end = minutesToTime(min);
+        } else {
+          entry.windows.splice(idx, 1, { start: w.start, end: minutesToTime(min) }, { start: minutesToTime(segEnd), end: minutesToTime(wEnd) });
+        }
       } else {
-        /* Merge adjacent: extend existing window or create new */
         let merged = false;
         for (const w of entry.windows) {
           if (timeToMinutes(w.end) === min) { w.end = minutesToTime(segEnd); merged = true; break; }
