@@ -97,10 +97,10 @@ let currentPlanData = null; // stores the latest generated plan for export
 const weeklyStrengthRotation = [[0, 1, 2], [3, 4, 5], [1, 3, 5]];
 const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const labels = { Mon: 'Montag', Tue: 'Dienstag', Wed: 'Mittwoch', Thu: 'Donnerstag', Fri: 'Freitag', Sat: 'Samstag', Sun: 'Sonntag' };
+const sportLabelsFull = { swim: '🏊 Schwimmen', bike: '🚴 Rad', run: '🏃 Laufen', strength: '💪 Kraft' };
 const yearModal = document.getElementById('annualModal');
 const annualViewBtn = document.getElementById('annualViewBtn');
 const closeAnnualModal = document.getElementById('closeAnnualModal');
-const annualGrid = document.getElementById('annualGrid');
 const annualGridModal = document.getElementById('annualGridModal');
 const annualEditor = document.getElementById('annualEditor');
 const annualDayDetail = document.getElementById('annualDayDetail');
@@ -467,19 +467,19 @@ function renderAvailabilityOverview() {
 
   /* --- Sport restrictions per day --- */
   const sportTypes = ['swim', 'bike', 'run', 'strength'];
-  const sportLabels = { swim: '🏊', bike: '🚴', run: '🏃', strength: '💪' };
+  const sportEmoji = { swim: '🏊', bike: '🚴', run: '🏃', strength: '💪' };
   const sportRows = weekdays.map((day, i) => {
     const dk = weekDates[i];
     const checks = sportTypes.map((st) => {
       const allowed = isSportAllowed(dk, st);
-      return `<label class="sport-check"><input type="checkbox" data-date="${dk}" data-sport="${st}" ${allowed ? 'checked' : ''} /><span>${sportLabels[st]}</span></label>`;
+      return `<label class="sport-check"><input type="checkbox" data-date="${dk}" data-sport="${st}" ${allowed ? 'checked' : ''} /><span>${sportEmoji[st]}</span></label>`;
     }).join('');
     return `<div class="sport-row"><span class="sport-day-name">${labels[day]}</span><div class="sport-checks">${checks}</div></div>`;
   }).join('');
 
   /* --- Blocked periods --- */
   const periodRows = blockedPeriods.map((p, pi) => {
-    const sportTags = p.sports.map((s) => `<span class="blocked-tag">${sportLabels[s] || s}</span>`).join('');
+    const sportTags = p.sports.map((s) => `<span class="blocked-tag">${sportEmoji[s] || s}</span>`).join('');
     return `<div class="blocked-period-row"><span class="blocked-dates">${p.start} – ${p.end}</span><div class="blocked-tags">${sportTags}</div><button type="button" class="blocked-remove" data-pi="${pi}">✕</button></div>`;
   }).join('');
 
@@ -1122,7 +1122,6 @@ function renderAnnualOverview() {
   };
 
   const gridHtml = Array.from({ length: 12 }, (_, index) => renderMonth(index)).join('');
-  if (annualGrid) annualGrid.innerHTML = gridHtml;
   if (annualGridModal) annualGridModal.innerHTML = gridHtml;
 
   document.querySelectorAll('.day-cell[data-date]').forEach((button) => {
@@ -1364,7 +1363,7 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
     return [...new Set(blocked)];
   }
 
-  const sportLabels = { swim: '🏊 Schwimmen', bike: '🚴 Rad', run: '🏃 Laufen', strength: '💪 Kraft' };
+  const sportLabelsLocal = { swim: '🏊 Schwimmen', bike: '🚴 Rad', run: '🏃 Laufen', strength: '💪 Kraft' };
 
   weekdays.forEach((day, dayIndex) => {
     const dayAvailability = availability[day];
@@ -1396,7 +1395,7 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
         if (type === 'rest') {
           schedule.push({ day, type: 'rest', label: 'Ruhe', description: 'Keine passende Sportart verfügbar', timeWindow: 'Kein Training', duration: '0 min', intensity: 'Recovery', minutes: 0, dateKey, blockedSports, replacedBy: null, originalType });
           if (blockedSports.length) {
-            blockedInfo.push({ dateKey, day, original: originalType, reason: blockedSports.map((s) => sportLabels[s] || s).join(', ') + ' blockiert' });
+            blockedInfo.push({ dateKey, day, original: originalType, reason: blockedSports.map((s) => sportLabelsLocal[s] || s).join(', ') + ' blockiert' });
           }
           break;
         }
@@ -1409,8 +1408,8 @@ function buildWeeklyPlan(availableDays, availability, blockedMap, experience, fo
         if (replaced) {
           session.replacedBy = type;
           session.originalType = originalType;
-          session.blockedNote = `⚠️ ${sportLabels[originalType] || originalType} blockiert → ${sportLabels[type] || type} als Alternative`;
-          blockedInfo.push({ dateKey, day, original: originalType, replacedBy: type, reason: blockedSports.map((s) => sportLabels[s] || s).join(', ') + ' blockiert' });
+          session.blockedNote = `⚠️ ${sportLabelsLocal[originalType] || originalType} blockiert → ${sportLabelsLocal[type] || type} als Alternative`;
+          blockedInfo.push({ dateKey, day, original: originalType, replacedBy: type, reason: blockedSports.map((s) => sportLabelsLocal[s] || s).join(', ') + ' blockiert' });
         }
         schedule.push(session);
         cursor += sessionMinutes;
@@ -1565,7 +1564,7 @@ function generatePlanFromForm() {
     const grouped = {};
     sorted.forEach((s) => { (grouped[s.day] = grouped[s.day] || []).push(s); });
     const blockedInfo = sessions._blockedInfo || [];
-    const blockedBanner = blockedInfo.length ? `<div class="blocked-info-banner"><strong>Urlaubs-Modus aktiv:</strong> ${blockedInfo.map((b) => `${labels[b.day] || b.day}: ${b.original ? (sportLabels[b.original] || b.original) : ''} blockiert${b.replacedBy ? ` → ${sportLabels[b.replacedBy] || b.replacedBy}` : ''}`).join(' · ')}</div>` : '';
+    const blockedBanner = blockedInfo.length ? `<div class="blocked-info-banner"><strong>Urlaubs-Modus aktiv:</strong> ${blockedInfo.map((b) => `${labels[b.day] || b.day}: ${b.original ? (sportLabelsFull[b.original] || b.original) : ''} blockiert${b.replacedBy ? ` → ${sportLabelsFull[b.replacedBy] || b.replacedBy}` : ''}`).join(' · ')}</div>` : '';
     return blockedBanner + Object.keys(grouped).map((day) => {
       const dayHasBlockedSports = grouped[day].some((s) => s.blockedSports && s.blockedSports.length > 0);
       return `
@@ -2354,13 +2353,6 @@ plannerForm.addEventListener('submit', (event) => {
 loadDemoBtn.addEventListener('click', () => {
   loadDemoPlan();
   showToast('Demo-Plan geladen – Zeitfenster für 12 Wochen eingetragen.');
-});
-
-document.querySelectorAll('.time-input').forEach((input) => {
-  input.addEventListener('input', () => {
-    updateAvailabilitySummary();
-    generatePlanFromForm();
-  });
 });
 
 // react to event inputs immediately
